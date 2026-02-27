@@ -1,4 +1,4 @@
-# NoCarry 🚫📦
+# NoCarry 🚫
 
 > **Fair grading for group projects. Finally.**
 
