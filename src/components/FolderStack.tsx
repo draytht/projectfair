@@ -7,16 +7,16 @@ import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 
 // ── Folder dimensions ─────────────────────────────────────────────────────────
-const FW = 2.9;   // width
-const FH = 2.15;  // height
-const FB = 0.26;  // back panel depth
-const FC = 0.10;  // cover depth
+const FW = 3.0;   // width
+const FH = 2.15;  // height:
+const FB = 0.25;  // back panel depth
+const FC = 0.25;  // cover depth
 
 // ── Theme config: folder adapts to every theme ────────────────────────────────
 type Cfg = { body: string; cover: string; paper: string; lines: string; glow: string; ambient: number; key: string; keyI: number };
 
 const THEMES: Record<string, Cfg> = {
-  "dark":         { body: "#3e3e3c", cover: "#333335", paper: "#dde8f5", lines: "#93c5fd", glow: "#3b82f6",  ambient: 0.22, key: "#bfdbfe", keyI: 2.4 },
+  "dark":         { body: "#3e3e3c", cover: "#151717", paper: "#dde8f5", lines: "#93c5fd", glow: "#3b82f6",  ambient: 0.22, key: "#bfdbfe", keyI: 2.4 },
   "light":        { body: "#bfdbfe", cover: "#2563eb", paper: "#f8fafc", lines: "#1d4ed8", glow: "#2563eb",  ambient: 0.80, key: "#93c5fd", keyI: 1.8 },
   "gruvbox":      { body: "#3c3836", cover: "#d79921", paper: "#ebdbb2", lines: "#fabd2f", glow: "#fabd2f",  ambient: 0.38, key: "#fabd2f", keyI: 2.0 },
   "nord":         { body: "#3b4252", cover: "#5e81ac", paper: "#eceff4", lines: "#88c0d0", glow: "#88c0d0",  ambient: 0.32, key: "#81a1c1", keyI: 2.0 },
@@ -91,7 +91,7 @@ function Folder({ cfg }: { cfg: Cfg }) {
     }
 
     // Glow on cover
-    const g = hovered ? 0.55 : 0;
+    const g = hovered ? 0.35 : 0;
     if (coverMat.current) {
       coverMat.current.emissive.copy(glowCol);
       coverMat.current.emissiveIntensity = THREE.MathUtils.lerp(coverMat.current.emissiveIntensity, g * 0.7, ek);
@@ -102,12 +102,12 @@ function Folder({ cfg }: { cfg: Cfg }) {
     }
     if (bodyMat.current) {
       bodyMat.current.emissive.copy(glowCol);
-      bodyMat.current.emissiveIntensity = THREE.MathUtils.lerp(bodyMat.current.emissiveIntensity, g * 0.25, ek);
+      bodyMat.current.emissiveIntensity = THREE.MathUtils.lerp(bodyMat.current.emissiveIntensity, g * 0.12, ek);
     }
 
     // Paper lines grow brighter as cover opens
     const openFrac = Math.abs(pivotRef.current?.rotation.x ?? 0) / (Math.PI * 0.62);
-    const lineGlow = 0.2 + openFrac * 1.4;
+    const lineGlow = 0.05 + openFrac * 0.35;
     lineMats.current.forEach((m) => {
       if (m) {
         m.emissive.copy(lineCol);
@@ -143,7 +143,7 @@ function Folder({ cfg }: { cfg: Cfg }) {
           <boxGeometry args={[ln.w, 0.038, 0.006]} />
           <meshStandardMaterial
             ref={(el) => { lineMats.current[i] = el; }}
-            color={cfg.lines} emissive={lineCol} emissiveIntensity={0.2}
+            color={cfg.lines} emissive={lineCol} emissiveIntensity={0.05}
             roughness={0.4} metalness={0}
           />
         </mesh>
@@ -179,11 +179,17 @@ function Scene({ cfg }: { cfg: Cfg }) {
       <ambientLight intensity={cfg.ambient} />
       <pointLight position={[4,  5, 5]}  color={cfg.key}    intensity={cfg.keyI} />
       <pointLight position={[-3, -2, 4]} color="#ffffff"     intensity={0.70} />
-      <pointLight position={[0,  4, 2]}  color={cfg.glow}    intensity={0.50} />
+      <pointLight position={[0, 2.2, 3]} color={cfg.glow} intensity={0.7} distance={2.2} decay={2.5} />
       <Folder cfg={cfg} />
       <EffectComposer>
-        <Bloom luminanceThreshold={0.30} luminanceSmoothing={0.92} height={300} intensity={1.2} />
-        <Vignette eskil={false} offset={0.20} darkness={0.50} />
+        <Bloom
+          luminanceThreshold={0.7}
+          luminanceSmoothing={0.2}
+          intensity={0.55}
+          height={1300}
+          radius={0.18}
+        />
+        <Vignette eskil={false} offset={0.18} darkness={0.45} />
       </EffectComposer>
     </>
   );
@@ -194,7 +200,7 @@ function FolderFallback() {
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{
-        width: 200, height: 155, borderRadius: 16,
+        width: 200, height: 165, borderRadius: 16,
         background: "var(--th-accent)",
         transform: "perspective(600px) rotateX(12deg) rotateY(-18deg)",
         boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
