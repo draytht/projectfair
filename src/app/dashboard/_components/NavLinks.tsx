@@ -70,6 +70,7 @@ export function NavLinks({ role }: { role: string }) {
       <Link
         key={href}
         href={href}
+        title={label}
         className="nc-nav-link"
         style={
           active
@@ -81,7 +82,7 @@ export function NavLinks({ role }: { role: string }) {
         }
       >
         {icon}
-        {label}
+        <span className="nc-sidebar-reveal">{label}</span>
       </Link>
     );
   }

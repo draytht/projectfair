@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import { MobileNavLinks } from "./_components/NavLinks";
 import { Sidebar } from "./_components/Sidebar";
+import { MobileHomeTrigger } from "./_components/MobileHomeTrigger";
 import { AvatarStatusCard } from "./_components/AvatarStatusCard";
 
 export default async function DashboardLayout({
@@ -32,12 +32,11 @@ export default async function DashboardLayout({
         style={{ background: "var(--th-card)", borderBottom: "1px solid var(--th-border)" }}
         className="md:hidden flex items-center justify-between px-4 py-3 shrink-0"
       >
-        <Link href="/" className="nc-brand">
-          <span className="nc-brand-dot" />
-          <span className="nc-brand-text">
-            No<span style={{ color: "var(--th-accent)" }}>Carry</span>
-          </span>
-        </Link>
+        <MobileHomeTrigger
+          name={dbUser.preferredName || dbUser.name}
+          avatarUrl={dbUser.avatarUrl ?? null}
+          role={dbUser.role}
+        />
         <nav className="flex items-center gap-4">
           <MobileNavLinks role={dbUser.role} />
           <form action="/api/auth/logout" method="POST">

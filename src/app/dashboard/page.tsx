@@ -155,8 +155,8 @@ function StudentDashboard({
         className="rounded-2xl px-8 py-7 flex items-center justify-between"
       >
         <div>
-          <p style={{ color: "var(--th-text-2)" }} className="text-sm mb-1">Welcome back</p>
-          <h1 style={{ color: "var(--th-text)" }} className="text-3xl font-black tracking-tight">{name}</h1>
+          <p className="nc-label mb-2">Welcome back</p>
+          <h1 className="nc-page-title">{name}</h1>
           <span
             style={{ background: "color-mix(in srgb, var(--th-accent) 15%, transparent)", color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-accent) 30%, transparent)" }}
             className="inline-block text-xs font-semibold px-3 py-1 rounded-full mt-3 capitalize"
@@ -206,7 +206,7 @@ function StudentDashboard({
           className="rounded-xl p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 style={{ color: "var(--th-text)" }} className="font-semibold text-sm">Your Active Tasks</h2>
+            <h2 className="nc-section-title">Your Active Tasks</h2>
             <span style={{ color: "var(--th-text-2)" }} className="text-xs">{assignedTasks.length} remaining</span>
           </div>
 
@@ -267,7 +267,7 @@ function StudentDashboard({
           className="rounded-xl p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 style={{ color: "var(--th-text)" }} className="font-semibold text-sm">Recent Projects</h2>
+            <h2 className="nc-section-title">Recent Projects</h2>
             <Link href="/dashboard/projects" style={{ color: "var(--th-accent)" }} className="text-xs hover:opacity-70 transition">
               View all →
             </Link>
@@ -354,8 +354,8 @@ function ProfessorDashboard({
         className="rounded-2xl px-8 py-7 flex items-center justify-between"
       >
         <div>
-          <p style={{ color: "var(--th-text-2)" }} className="text-sm mb-1">Welcome back</p>
-          <h1 style={{ color: "var(--th-text)" }} className="text-3xl font-black tracking-tight">{name}</h1>
+          <p className="nc-label mb-2">Welcome back</p>
+          <h1 className="nc-page-title">{name}</h1>
           <span
             style={{ background: "color-mix(in srgb, var(--th-accent) 15%, transparent)", color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-accent) 30%, transparent)" }}
             className="inline-block text-xs font-semibold px-3 py-1 rounded-full mt-3"
@@ -395,7 +395,7 @@ function ProfessorDashboard({
           style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
           className="rounded-xl p-5"
         >
-          <h2 style={{ color: "var(--th-text)" }} className="font-semibold text-sm mb-4">
+          <h2 className="nc-section-title mb-4">
             Needs Attention
           </h2>
           {flagged.length === 0 ? (
@@ -431,7 +431,7 @@ function ProfessorDashboard({
           className="rounded-xl p-5"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 style={{ color: "var(--th-text)" }} className="font-semibold text-sm">Project Progress</h2>
+            <h2 className="nc-section-title">Project Progress</h2>
             <Link href="/dashboard/courses" style={{ color: "var(--th-accent)" }} className="text-xs hover:opacity-70 transition">
               View all →
             </Link>

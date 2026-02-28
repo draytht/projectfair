@@ -41,7 +41,7 @@ export default function CoursesPage() {
     <div>
       {/* Page header */}
       <div className="mb-10">
-        <h2 style={{ color: "var(--th-text)" }} className="text-2xl font-bold tracking-tight">
+        <h2 className="nc-page-title">
           My Courses
         </h2>
         <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1">

@@ -1,15 +1,25 @@
 import type { Metadata } from "next";
-import { Sora } from "next/font/google";
+import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { FloatingThemeToggle } from "@/components/FloatingThemeToggle";
 import { CursorGlow } from "@/components/CursorGlow";
 import { ClickSound } from "@/components/ClickSound";
 
-const sora = Sora({
+// DM Sans — humanist grotesque, excellent clarity, pairs well with Instrument Serif
+// Injected under the same --font-sora variable so every existing reference just works
+const dmSans = DM_Sans({
   variable: "--font-sora",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+// Instrument Serif — editorial display face, used only for large headings
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -32,7 +42,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${sora.variable} antialiased`}>
+      <body className={`${dmSans.variable} ${instrumentSerif.variable} antialiased`}>
         <ThemeProvider>
           {children}
           <FloatingThemeToggle />

@@ -81,7 +81,7 @@ export default function MonitorPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h2 style={{ color: "var(--th-text)" }} className="text-2xl font-bold tracking-tight">
+          <h2 className="nc-page-title">
             {summary.project.name}
           </h2>
           {summary.project.courseCode && (

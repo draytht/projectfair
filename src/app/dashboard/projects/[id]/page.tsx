@@ -7,6 +7,22 @@ import { createClient } from "@/lib/supabase/client";
 
 type User = { id: string; name: string; preferredName?: string | null; avatarUrl?: string | null };
 
+type MemberFullProfile = {
+  id: string;
+  name: string;
+  preferredName: string | null;
+  bio: string | null;
+  school: string | null;
+  major: string | null;
+  avatarUrl: string | null;
+  githubUrl: string | null;
+  linkedinUrl: string | null;
+  personalLinks: unknown;
+  status: string | null;
+  statusExpiresAt: string | null;
+  role: string;
+};
+
 function initials(name: string) {
   const parts = name.trim().split(" ");
   return parts.length >= 2
@@ -123,6 +139,7 @@ export default function ProjectPage() {
   const [currentUserGlobalRole, setCurrentUserGlobalRole] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [viewingMember, setViewingMember] = useState<{ member: Member; profile: MemberFullProfile | null; loading: boolean } | null>(null);
 
   useEffect(() => {
     fetch(`/api/projects/${id}/contributions`)
@@ -278,6 +295,17 @@ export default function ProjectPage() {
     }
   }
 
+  async function openMemberProfile(member: Member) {
+    setViewingMember({ member, profile: null, loading: true });
+    const res = await fetch(`/api/users/${member.user.id}`);
+    if (res.ok) {
+      const profile: MemberFullProfile = await res.json();
+      setViewingMember({ member, profile, loading: false });
+    } else {
+      setViewingMember({ member, profile: null, loading: false });
+    }
+  }
+
   if (loading)
     return <p style={{ color: "var(--th-text-2)" }} className="text-sm p-8">Loading...</p>;
   if (!project)
@@ -311,7 +339,7 @@ export default function ProjectPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div>
-          <h2 style={{ color: "var(--th-text)" }} className="text-2xl font-bold tracking-tight">
+          <h2 className="nc-page-title">
             {project.name}
           </h2>
           {project.courseCode && (
@@ -367,9 +395,16 @@ export default function ProjectPage() {
                   style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
                   className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1"
                 >
-                  <MemberAvatar user={m.user} size={22} />
-                  <span style={{ color: "var(--th-text)" }} className="text-xs">{m.user.preferredName || m.user.name}</span>
-                  <span style={{ color: "var(--th-text-2)" }} className="text-xs">· {m.role.toLowerCase().replace("_", " ")}</span>
+                  <button
+                    onClick={() => openMemberProfile(m)}
+                    title={`View ${m.user.preferredName || m.user.name}'s profile`}
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition"
+                    style={{ background: "none", border: "none", padding: 0 }}
+                  >
+                    <MemberAvatar user={m.user} size={22} />
+                    <span style={{ color: "var(--th-text)" }} className="text-xs">{m.user.preferredName || m.user.name}</span>
+                    <span style={{ color: "var(--th-text-2)" }} className="text-xs">· {m.role.toLowerCase().replace("_", " ")}</span>
+                  </button>
                   {canKick && (
                     <button
                       onClick={() => kickMember(m.id)}
@@ -741,6 +776,135 @@ export default function ProjectPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Member Profile Modal */}
+      {viewingMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+          onClick={() => setViewingMember(null)}
+        >
+          <div
+            className="nc-member-card w-full"
+            style={{
+              maxWidth: 360,
+              borderRadius: 20,
+              padding: "28px 24px",
+              background: "color-mix(in srgb, var(--th-card) 72%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--th-border) 60%, transparent)",
+              backdropFilter: "blur(24px) saturate(180%)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.28), 0 1px 0 color-mix(in srgb, var(--th-accent) 12%, transparent) inset",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {viewingMember.loading ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--th-border)" }} className="animate-pulse" />
+                <div style={{ width: 120, height: 12, borderRadius: 6, background: "var(--th-border)" }} className="animate-pulse" />
+                <div style={{ width: 80, height: 10, borderRadius: 6, background: "var(--th-border)" }} className="animate-pulse" />
+              </div>
+            ) : viewingMember.profile ? (() => {
+              const p = viewingMember.profile!;
+              const displayName = p.preferredName || p.name;
+              const links = Array.isArray(p.personalLinks) ? p.personalLinks as { label: string; url: string }[] : [];
+              const statusValid = p.status && (!p.statusExpiresAt || new Date(p.statusExpiresAt) > new Date());
+              return (
+                <div className="flex flex-col items-center gap-4">
+                  {/* Avatar */}
+                  <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--th-accent)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 0 3px color-mix(in srgb, var(--th-accent) 20%, transparent)" }}>
+                    {p.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.avatarUrl} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ color: "var(--th-accent-fg)", fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
+                        {initials(displayName)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Name + role */}
+                  <div className="text-center">
+                    <p style={{ color: "var(--th-text)" }} className="text-lg font-bold leading-tight">{displayName}</p>
+                    {p.preferredName && p.name !== p.preferredName && (
+                      <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-0.5">{p.name}</p>
+                    )}
+                    <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                      <span
+                        style={{ background: "color-mix(in srgb, var(--th-accent) 14%, transparent)", color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-accent) 30%, transparent)" }}
+                        className="text-xs px-2.5 py-0.5 rounded-full font-medium"
+                      >
+                        {viewingMember.member.role.toLowerCase().replace("_", " ")}
+                      </span>
+                      {statusValid && (
+                        <span style={{ color: "var(--th-text-2)" }} className="text-xs">· {p.status}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info rows */}
+                  {(p.bio || p.school || p.major) && (
+                    <div style={{ borderTop: "1px solid color-mix(in srgb, var(--th-border) 50%, transparent)", width: "100%", paddingTop: 16 }} className="space-y-2">
+                      {p.bio && (
+                        <p style={{ color: "var(--th-text-2)" }} className="text-xs leading-relaxed text-center">{p.bio}</p>
+                      )}
+                      {(p.school || p.major) && (
+                        <p style={{ color: "var(--th-text-2)" }} className="text-xs text-center">
+                          {[p.major, p.school].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Links */}
+                  {(p.githubUrl || p.linkedinUrl || links.length > 0) && (
+                    <div style={{ borderTop: "1px solid color-mix(in srgb, var(--th-border) 50%, transparent)", width: "100%", paddingTop: 14 }} className="flex flex-wrap gap-2 justify-center">
+                      {p.githubUrl && (
+                        <a
+                          href={p.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-border) 70%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 500, textDecoration: "none" }}
+                          className="hover:opacity-70 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          GitHub
+                        </a>
+                      )}
+                      {p.linkedinUrl && (
+                        <a
+                          href={p.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-border) 70%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 500, textDecoration: "none" }}
+                          className="hover:opacity-70 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          LinkedIn
+                        </a>
+                      )}
+                      {links.map((l, i) => (
+                        <a
+                          key={i}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-border) 70%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 500, textDecoration: "none" }}
+                          className="hover:opacity-70 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {l.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })() : (
+              <p style={{ color: "var(--th-text-2)" }} className="text-sm text-center py-6">Could not load profile.</p>
+            )}
+          </div>
         </div>
       )}
 

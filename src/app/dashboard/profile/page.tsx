@@ -173,7 +173,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 style={{ color: "var(--th-text)" }} className="text-2xl font-semibold">
+      <h1 className="nc-page-title">
         Profile
       </h1>
 
