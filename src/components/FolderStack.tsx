@@ -1,35 +1,34 @@
 "use client";
 
-import { useRef, useEffect, useState, useMemo } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { RoundedBox, AdaptiveDpr } from "@react-three/drei";
-import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
+import { RoundedBox, AdaptiveDpr, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 
 // ── Folder dimensions ─────────────────────────────────────────────────────────
-const FW = 3.0;   // width
-const FH = 2.15;  // height:
-const FB = 0.25;  // back panel depth
-const FC = 0.25;  // cover depth
+const FW = 3.0;    // width
+const FH = 2.15;   // height
+const FB = 0.09;   // back panel thickness — thin cardstock
+const FC = 0.09;   // cover thickness     — thin cardstock
 
-// ── Theme config: folder adapts to every theme ────────────────────────────────
-type Cfg = { body: string; cover: string; paper: string; lines: string; glow: string; ambient: number; key: string; keyI: number };
+// ── Theme config ──────────────────────────────────────────────────────────────
+type Cfg = { body: string; cover: string; paper: string; lines: string; ambient: number; key: string; keyI: number };
 
 const THEMES: Record<string, Cfg> = {
-  "dark":         { body: "#3e3e3c", cover: "#151717", paper: "#dde8f5", lines: "#93c5fd", glow: "#3b82f6",  ambient: 0.22, key: "#bfdbfe", keyI: 2.4 },
-  "light":        { body: "#bfdbfe", cover: "#2563eb", paper: "#f8fafc", lines: "#1d4ed8", glow: "#2563eb",  ambient: 0.80, key: "#93c5fd", keyI: 1.8 },
-  "gruvbox":      { body: "#3c3836", cover: "#d79921", paper: "#ebdbb2", lines: "#fabd2f", glow: "#fabd2f",  ambient: 0.38, key: "#fabd2f", keyI: 2.0 },
-  "nord":         { body: "#3b4252", cover: "#5e81ac", paper: "#eceff4", lines: "#88c0d0", glow: "#88c0d0",  ambient: 0.32, key: "#81a1c1", keyI: 2.0 },
-  "tokyo-night":  { body: "#1a1b26", cover: "#7aa2f7", paper: "#c0caf5", lines: "#bb9af7", glow: "#7aa2f7",  ambient: 0.22, key: "#bb9af7", keyI: 2.4 },
-  "dracula":      { body: "#282a36", cover: "#bd93f9", paper: "#f8f8f2", lines: "#ff79c6", glow: "#bd93f9",  ambient: 0.27, key: "#ff79c6", keyI: 2.2 },
-  "catppuccin":   { body: "#181825", cover: "#cba6f7", paper: "#cdd6f4", lines: "#f38ba8", glow: "#cba6f7",  ambient: 0.25, key: "#f38ba8", keyI: 2.2 },
+  "dark":         { body: "#afafa8", cover: "#ffffff", paper: "#dde8f5", lines: "#93c5fd", ambient: 0.30, key: "#c8deff", keyI: 2.2 },
+  "light":        { body: "#484848", cover: "#1c1e20", paper: "#f8fafc", lines: "#1d4ed8", ambient: 0.90, key: "#93c5fd", keyI: 1.6 },
+  "gruvbox":      { body: "#3c3836", cover: "#d79921", paper: "#ebdbb2", lines: "#fabd2f", ambient: 0.45, key: "#fabd2f", keyI: 1.8 },
+  "nord":         { body: "#3b4252", cover: "#5e81ac", paper: "#eceff4", lines: "#88c0d0", ambient: 0.40, key: "#81a1c1", keyI: 1.8 },
+  "tokyo-night":  { body: "#1a1b26", cover: "#7aa2f7", paper: "#c0caf5", lines: "#bb9af7", ambient: 0.28, key: "#bb9af7", keyI: 2.2 },
+  "dracula":      { body: "#282a36", cover: "#bd93f9", paper: "#f8f8f2", lines: "#ff79c6", ambient: 0.32, key: "#ff79c6", keyI: 2.0 },
+  "catppuccin":   { body: "#181825", cover: "#cba6f7", paper: "#cdd6f4", lines: "#f38ba8", ambient: 0.30, key: "#f38ba8", keyI: 2.0 },
 };
 const DFLT: Cfg = THEMES.dark;
 
-// Content lines visible when folder opens
+// Lines printed on the visible paper
 const LINES = [
-  { y: 0.64, w: 2.0 }, { y: 0.40, w: 1.5 }, { y: 0.16, w: 2.2 },
-  { y: -0.08, w: 1.75 }, { y: -0.32, w: 2.1 }, { y: -0.56, w: 1.35 },
+  { y: 0.62, w: 2.0 }, { y: 0.38, w: 1.5 }, { y: 0.14, w: 2.2 },
+  { y: -0.10, w: 1.75 }, { y: -0.34, w: 2.1 }, { y: -0.58, w: 1.35 },
 ];
 
 // ── Theme hook ────────────────────────────────────────────────────────────────
@@ -47,22 +46,13 @@ function useTheme() {
 
 // ── The folder ────────────────────────────────────────────────────────────────
 function Folder({ cfg }: { cfg: Cfg }) {
-  const wrapRef  = useRef<THREE.Group>(null);   // whole folder (parallax)
-  const pivotRef = useRef<THREE.Group>(null);   // cover pivot (bottom edge hinge)
+  const wrapRef  = useRef<THREE.Group>(null);
+  const pivotRef = useRef<THREE.Group>(null);
   const mouse    = useRef({ x: 0, y: 0 });
   const openTgt  = useRef(0);
   const [hovered, setHovered] = useState(false);
 
-  // Material refs — lerped in useFrame, no re-renders
-  const coverMat = useRef<THREE.MeshStandardMaterial>(null);
-  const tabMat   = useRef<THREE.MeshStandardMaterial>(null);
-  const bodyMat  = useRef<THREE.MeshStandardMaterial>(null);
-  const lineMats = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
-
-  const glowCol  = useMemo(() => new THREE.Color(cfg.glow), [cfg.glow]);
-  const lineCol  = useMemo(() => new THREE.Color(cfg.lines), [cfg.lines]);
-
-  useEffect(() => { openTgt.current = hovered ? Math.PI * 0.62 : 0; }, [hovered]);
+  useEffect(() => { openTgt.current = hovered ? Math.PI * 0.58 : 0; }, [hovered]);
 
   useEffect(() => {
     const mv = (e: MouseEvent) => {
@@ -75,97 +65,85 @@ function Folder({ cfg }: { cfg: Cfg }) {
     return () => window.removeEventListener("mousemove", mv);
   }, []);
 
-  useFrame((_, dt) => {
-    const k  = Math.min(1, dt * 7);
-    const ek = Math.min(1, dt * 10);
-
-    // Whole-folder mouse parallax
+  useFrame((state, dt) => {
+    const k = Math.min(1, dt * 6);
     if (wrapRef.current) {
       wrapRef.current.rotation.x = THREE.MathUtils.lerp(wrapRef.current.rotation.x, mouse.current.y *  0.09, k);
       wrapRef.current.rotation.y = THREE.MathUtils.lerp(wrapRef.current.rotation.y, mouse.current.x * -0.13, k);
+      wrapRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.7) * 0.05;
     }
-
-    // Cover opening — hinge at bottom edge
     if (pivotRef.current) {
       pivotRef.current.rotation.x = THREE.MathUtils.lerp(pivotRef.current.rotation.x, openTgt.current, k);
     }
-
-    // Glow on cover
-    const g = hovered ? 0.35 : 0;
-    if (coverMat.current) {
-      coverMat.current.emissive.copy(glowCol);
-      coverMat.current.emissiveIntensity = THREE.MathUtils.lerp(coverMat.current.emissiveIntensity, g * 0.7, ek);
-    }
-    if (tabMat.current) {
-      tabMat.current.emissive.copy(glowCol);
-      tabMat.current.emissiveIntensity = coverMat.current?.emissiveIntensity ?? 0;
-    }
-    if (bodyMat.current) {
-      bodyMat.current.emissive.copy(glowCol);
-      bodyMat.current.emissiveIntensity = THREE.MathUtils.lerp(bodyMat.current.emissiveIntensity, g * 0.12, ek);
-    }
-
-    // Paper lines grow brighter as cover opens
-    const openFrac = Math.abs(pivotRef.current?.rotation.x ?? 0) / (Math.PI * 0.62);
-    const lineGlow = 0.05 + openFrac * 0.35;
-    lineMats.current.forEach((m) => {
-      if (m) {
-        m.emissive.copy(lineCol);
-        m.emissiveIntensity = THREE.MathUtils.lerp(m.emissiveIntensity, lineGlow, ek);
-      }
-    });
   });
 
+  // z positions for the thin geometry
+  const paperZ  = (i: number) => -FB + 0.004 + i * 0.010;
+  const linesZ  = -FB + 0.038;
+  const pivotZ  = FC / 2 + 0.004;
+
   return (
-    // Resting tilt — makes it look naturally placed, not robotically flat
-    <group ref={wrapRef} rotation={[0.08, -0.18, 0.02]}
+    <group ref={wrapRef} rotation={[0.10, -0.22, 0.02]}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
     >
       {/* ── Back panel ───────────────────────────────────────────────────── */}
-      <RoundedBox args={[FW, FH, FB]} radius={0.09} smoothness={4} position={[0, 0, -FB / 2]}>
-        <meshStandardMaterial ref={bodyMat} color={cfg.body} roughness={0.3} metalness={0.06}
-          emissive={glowCol} emissiveIntensity={0} />
+      <RoundedBox args={[FW, FH, FB]} radius={0.04} smoothness={4} position={[0, 0, -FB / 2]}>
+        <meshPhysicalMaterial
+          color={cfg.body}
+          roughness={0.78}
+          metalness={0}
+          clearcoat={0.10}
+          clearcoatRoughness={0.65}
+        />
       </RoundedBox>
 
-      {/* ── Papers (3 sheets, stacked, visible from open cover angle) ──── */}
-      {[0, 1, 2].map((i) => (
-        <RoundedBox key={i} args={[FW - 0.24, FH - 0.2, 0.01]} radius={0.04} smoothness={3}
-          position={[i * 0.018, i * 0.008, -FB + 0.005 + i * 0.015]}>
-          <meshStandardMaterial color={cfg.paper} roughness={0.65} metalness={0}
-            emissive={glowCol} emissiveIntensity={0.06} />
+      {/* ── Spine strip — thin fold seam at the bottom where back meets cover */}
+      <mesh position={[0, -FH / 2 + 0.03, -FB / 4]}>
+        <boxGeometry args={[FW - 0.01, 0.06, FB / 2 + FC / 2 + 0.012]} />
+        <meshPhysicalMaterial color={cfg.body} roughness={0.85} metalness={0} />
+      </mesh>
+
+      {/* ── Papers (5 sheets, fanned slightly) ───────────────────────────── */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <RoundedBox key={i} args={[FW - 0.28, FH - 0.22, 0.007]} radius={0.025} smoothness={3}
+          position={[i * 0.014, i * 0.006 - 0.01, paperZ(i)]}>
+          <meshPhysicalMaterial color={cfg.paper} roughness={0.92} metalness={0} />
         </RoundedBox>
       ))}
 
-      {/* ── Content lines — glow as folder opens ─────────────────────── */}
+      {/* ── Printed lines on top sheet ────────────────────────────────── */}
       {LINES.map((ln, i) => (
-        <mesh key={i} position={[0, ln.y, -FB + 0.042]}>
-          <boxGeometry args={[ln.w, 0.038, 0.006]} />
-          <meshStandardMaterial
-            ref={(el) => { lineMats.current[i] = el; }}
-            color={cfg.lines} emissive={lineCol} emissiveIntensity={0.05}
-            roughness={0.4} metalness={0}
-          />
+        <mesh key={i} position={[0, ln.y, linesZ]}>
+          <boxGeometry args={[ln.w, 0.032, 0.003]} />
+          <meshStandardMaterial color={cfg.lines} roughness={0.88} metalness={0} />
         </mesh>
       ))}
 
-      {/* ── Cover — pivots from its BOTTOM edge toward viewer ─────────── */}
-      {/*   pivot group sits at the bottom edge of where the cover rests  */}
-      <group position={[0, -FH / 2, FC / 2]} ref={pivotRef}>
-        {/* Cover mesh — offset up so its bottom edge is at pivot origin */}
-        <RoundedBox args={[FW, FH, FC]} radius={0.09} smoothness={4}
+      {/* ── Cover — hinged at bottom edge ────────────────────────────────── */}
+      <group position={[0, -FH / 2, pivotZ]} ref={pivotRef}>
+        {/* Main cover panel */}
+        <RoundedBox args={[FW, FH, FC]} radius={0.04} smoothness={4}
           position={[0, FH / 2, 0]}>
-          <meshStandardMaterial ref={coverMat} color={cfg.cover}
-            roughness={0.20} metalness={0.10}
-            emissive={glowCol} emissiveIntensity={0} />
+          <meshPhysicalMaterial
+            color={cfg.cover}
+            roughness={0.72}
+            metalness={0}
+            clearcoat={0.20}
+            clearcoatRoughness={0.50}
+          />
         </RoundedBox>
 
-        {/* Tab — top-left of cover, moves with it */}
-        <RoundedBox args={[0.68, 0.22, FC]} radius={0.04} smoothness={3}
-          position={[-FW / 2 + 0.44, FH + 0.11, 0]}>
-          <meshStandardMaterial ref={tabMat} color={cfg.cover}
-            roughness={0.20} metalness={0.10}
-            emissive={glowCol} emissiveIntensity={0} />
+        {/* Tab — top-left corner, continuous with cover */}
+        <RoundedBox args={[0.72, 0.20, FC]} radius={0.035} smoothness={3}
+          position={[-FW / 2 + 0.46, FH + 0.10, 0]}>
+          <meshPhysicalMaterial
+            color={cfg.cover}
+            roughness={0.72}
+            metalness={0}
+            clearcoat={0.20}
+            clearcoatRoughness={0.50}
+          />
         </RoundedBox>
       </group>
     </group>
@@ -176,21 +154,23 @@ function Folder({ cfg }: { cfg: Cfg }) {
 function Scene({ cfg }: { cfg: Cfg }) {
   return (
     <>
-      <ambientLight intensity={cfg.ambient} />
-      <pointLight position={[4,  5, 5]}  color={cfg.key}    intensity={cfg.keyI} />
-      <pointLight position={[-3, -2, 4]} color="#ffffff"     intensity={0.70} />
-      <pointLight position={[0, 2.2, 3]} color={cfg.glow} intensity={0.7} distance={2.2} decay={2.5} />
+      {/* Three-point studio lighting */}
+      <hemisphereLight args={["#dce8ff", "#1a1f2e", cfg.ambient]} />
+      <directionalLight position={[4, 7, 5]}  color={cfg.key}   intensity={cfg.keyI} />
+      <directionalLight position={[-5, 1, 3]} color="#b0c8ff"   intensity={0.55} />
+      <pointLight       position={[0, -3, 4]} color="#ffffff"    intensity={0.30} />
+
       <Folder cfg={cfg} />
-      <EffectComposer>
-        <Bloom
-          luminanceThreshold={0.7}
-          luminanceSmoothing={0.2}
-          intensity={0.55}
-          height={1300}
-          radius={0.18}
-        />
-        <Vignette eskil={false} offset={0.18} darkness={0.45} />
-      </EffectComposer>
+
+      {/* Soft drop shadow — grounds the folder */}
+      <ContactShadows
+        position={[0, -1.45, 0]}
+        opacity={0.38}
+        scale={7}
+        blur={2.8}
+        far={3.5}
+        color="#000000"
+      />
     </>
   );
 }
@@ -200,7 +180,7 @@ function FolderFallback() {
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{
-        width: 200, height: 165, borderRadius: 16,
+        width: 200, height: 165, borderRadius: 8,
         background: "var(--th-accent)",
         transform: "perspective(600px) rotateX(12deg) rotateY(-18deg)",
         boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
@@ -227,8 +207,7 @@ export function FolderStack() {
   if (mode === "css") return <FolderFallback />;
 
   return (
-    // Camera: slightly above and in front — perfect angle to see inside when opened
-    <Canvas camera={{ position: [0.4, 1.9, 5.8], fov: 42, near: 0.1, far: 100 }}
+    <Canvas camera={{ position: [0.4, 1.9, 5.8], fov: 40, near: 0.1, far: 100 }}
       dpr={[1, 1.5]} performance={{ min: 0.5 }}
       style={{ background: "transparent", width: "100%", height: "100%" }}>
       <AdaptiveDpr pixelated />

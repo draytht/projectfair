@@ -154,8 +154,20 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ color: "var(--th-text-2)" }} className="text-sm p-4">
-        Loading…
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 12 }} className="p-6 flex gap-5 items-start">
+          <div className="nc-skeleton" style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--th-border)", flexShrink: 0 }} />
+          <div className="space-y-2 flex-1">
+            <div className="nc-skeleton" style={{ width: "55%", height: 18, borderRadius: 6, background: "var(--th-border)" }} />
+            <div className="nc-skeleton" style={{ width: "35%", height: 12, borderRadius: 6, background: "var(--th-border)" }} />
+            <div className="nc-skeleton" style={{ width: "80%", height: 12, borderRadius: 6, background: "var(--th-border)" }} />
+          </div>
+        </div>
+        <div style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 12 }} className="p-6 space-y-4">
+          {[100, 60, 80, 60, 60, 80, 80].map((w, i) => (
+            <div key={i} className="nc-skeleton" style={{ width: `${w}%`, height: 36, borderRadius: 8, background: "var(--th-border)" }} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -173,7 +185,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="nc-page-title">
+      <h1 className="nc-page-title nc-u-in">
         Profile
       </h1>
 
@@ -183,36 +195,70 @@ export default function ProfilePage() {
           background: "var(--th-card)",
           border: "1px solid var(--th-border)",
           borderRadius: 12,
+          animationDelay: "0.06s",
         }}
-        className="p-6 flex gap-5 items-start"
+        className="nc-u-in p-4 md:p-6 flex gap-4 md:gap-5 items-start"
       >
-        {/* Avatar */}
+        {/* Avatar with breathing ring */}
         <div
+          className="nc-avatar-ring"
           style={{
             width: 80,
             height: 80,
             borderRadius: "50%",
-            background: "var(--th-accent)",
-            color: "#fff",
-            fontSize: 28,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             flexShrink: 0,
-            overflow: "hidden",
+            position: "relative",
           }}
         >
-          {currentAvatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={currentAvatar}
-              alt={displayName}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <Initials name={displayName} />
-          )}
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "50%",
+              background: "var(--th-accent)",
+              color: "#fff",
+              fontSize: 28,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              cursor: "pointer",
+              position: "relative",
+            }}
+            onClick={() => fileInputRef.current?.click()}
+            title="Change avatar"
+          >
+            {currentAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentAvatar}
+                alt={displayName}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <Initials name={displayName} />
+            )}
+            {/* Hover overlay */}
+            <div style={{
+              position: "absolute", inset: 0, background: "rgba(0,0,0,0.38)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: "50%", opacity: 0, transition: "opacity 0.18s ease",
+              fontSize: 11, color: "#fff", fontWeight: 600,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
+            >
+              {uploadingAvatar ? "…" : "Edit"}
+            </div>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
         </div>
 
         {/* Info */}
@@ -234,8 +280,8 @@ export default function ProfilePage() {
                 href={profile.githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "var(--th-accent)" }}
-                className="text-xs hover:opacity-70 transition"
+                style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-border) 80%,transparent)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}
+                className="hover:opacity-70 transition"
               >
                 GitHub
               </a>
@@ -245,8 +291,8 @@ export default function ProfilePage() {
                 href={profile.linkedinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "var(--th-accent)" }}
-                className="text-xs hover:opacity-70 transition"
+                style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-border) 80%,transparent)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}
+                className="hover:opacity-70 transition"
               >
                 LinkedIn
               </a>
@@ -259,8 +305,8 @@ export default function ProfilePage() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: "var(--th-accent)" }}
-                    className="text-xs hover:opacity-70 transition"
+                    style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-border) 80%,transparent)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}
+                    className="hover:opacity-70 transition"
                   >
                     {link.label || link.url}
                   </a>
@@ -276,21 +322,22 @@ export default function ProfilePage() {
           background: "var(--th-card)",
           border: "1px solid var(--th-border)",
           borderRadius: 12,
+          animationDelay: "0.12s",
         }}
-        className="p-6"
+        className="nc-u-in p-6"
       >
         <h2 style={{ color: "var(--th-text)" }} className="text-base font-semibold mb-5">
           Edit Profile
         </h2>
 
         {error && (
-          <p style={{ color: "#ef4444" }} className="text-xs mb-4">
+          <p style={{ color: "#ef4444", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "8px 12px" }} className="text-xs mb-4">
             {error}
           </p>
         )}
 
         <form onSubmit={handleSave} className="space-y-4">
-          {/* Avatar upload */}
+          {/* Avatar upload (hidden, triggered by avatar click above) */}
           <div>
             <label style={{ color: "var(--th-text-2)" }} className="text-xs block mb-1">
               Avatar
@@ -307,7 +354,9 @@ export default function ProfilePage() {
                   borderRadius: 8,
                   padding: "6px 14px",
                   fontSize: 12,
-                  cursor: "pointer",
+                  cursor: uploadingAvatar ? "not-allowed" : "pointer",
+                  transition: "opacity 0.15s",
+                  opacity: uploadingAvatar ? 0.6 : 1,
                 }}
               >
                 {uploadingAvatar ? "Uploading…" : "Choose image"}
@@ -316,13 +365,6 @@ export default function ProfilePage() {
                 {currentAvatar ? "Avatar set" : "No avatar"}
               </span>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
             <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1 opacity-60">
               Requires the &quot;avatars&quot; bucket to exist in Supabase Storage (public, max 5 MB).
             </p>
@@ -357,7 +399,11 @@ export default function ProfilePage() {
                 padding: "8px 12px",
                 fontSize: 13,
                 resize: "vertical",
+                outline: "none",
+                transition: "border-color 0.15s",
               }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--th-accent)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--th-border)")}
             />
           </div>
 
@@ -397,14 +443,19 @@ export default function ProfilePage() {
                     value={link.label}
                     onChange={(e) => updateLink(idx, "label", e.target.value)}
                     style={{
-                      flex: "0 0 120px",
+                      flex: "0 0 90px",
+                      minWidth: 0,
                       background: "var(--th-bg)",
                       border: "1px solid var(--th-border)",
                       color: "var(--th-text)",
                       borderRadius: 8,
-                      padding: "6px 10px",
-                      fontSize: 12,
+                      padding: "8px 10px",
+                      fontSize: 13,
+                      outline: "none",
+                      transition: "border-color 0.15s",
                     }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--th-accent)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--th-border)")}
                   />
                   <input
                     placeholder="https://…"
@@ -419,12 +470,18 @@ export default function ProfilePage() {
                       borderRadius: 8,
                       padding: "6px 10px",
                       fontSize: 12,
+                      outline: "none",
+                      transition: "border-color 0.15s",
                     }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--th-accent)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--th-border)")}
                   />
                   <button
                     type="button"
                     onClick={() => removeLink(idx)}
-                    style={{ color: "var(--th-text-2)", cursor: "pointer", fontSize: 14 }}
+                    style={{ color: "var(--th-text-2)", cursor: "pointer", fontSize: 18, lineHeight: 1, transition: "color 0.14s", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, flexShrink: 0 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "var(--th-text-2)")}
                   >
                     ×
                   </button>
@@ -435,7 +492,8 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={addLink}
-                style={{ color: "var(--th-accent)", fontSize: 12, cursor: "pointer", marginTop: 8 }}
+                style={{ color: "var(--th-accent)", fontSize: 12, cursor: "pointer", marginTop: 8, transition: "opacity 0.14s" }}
+                className="hover:opacity-70"
               >
                 + Add link
               </button>
@@ -443,23 +501,32 @@ export default function ProfilePage() {
           </div>
 
           {/* Save button */}
-          <div className="pt-2">
+          <div className="pt-2 flex items-center gap-3">
             <button
               type="submit"
               disabled={saving}
               style={{
-                background: "var(--th-accent)",
-                color: "#fff",
+                background: saved ? "color-mix(in srgb,var(--th-accent) 80%,#22c55e)" : "var(--th-accent)",
+                color: "var(--th-accent-fg)",
                 border: "none",
                 borderRadius: 8,
-                padding: "8px 20px",
+                padding: "8px 24px",
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.7 : 1,
+                transition: "background 0.3s, opacity 0.15s, transform 0.12s cubic-bezier(0.16,1,0.3,1)",
+                transform: saving ? "scale(0.97)" : "scale(1)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
+              {saved ? (
+                <span style={{ animation: "nc-saved-pop 0.38s cubic-bezier(0.34,1.56,0.64,1) both", display: "inline-block" }}>
+                  ✓ Saved
+                </span>
+              ) : saving ? "Saving…" : "Save changes"}
             </button>
           </div>
         </form>

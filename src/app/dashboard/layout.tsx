@@ -5,6 +5,7 @@ import { MobileNavLinks } from "./_components/NavLinks";
 import { Sidebar } from "./_components/Sidebar";
 import { MobileHomeTrigger } from "./_components/MobileHomeTrigger";
 import { AvatarStatusCard } from "./_components/AvatarStatusCard";
+import { MobileSettingsButton } from "./_components/MobileSettingsButton";
 
 export default async function DashboardLayout({
   children,
@@ -30,17 +31,20 @@ export default async function DashboardLayout({
       {/* Mobile top bar */}
       <header
         style={{ background: "var(--th-card)", borderBottom: "1px solid var(--th-border)" }}
-        className="md:hidden flex items-center justify-between px-4 py-3 shrink-0"
+        className="md:hidden flex items-center justify-between px-4 shrink-0 min-h-[56px]"
       >
         <MobileHomeTrigger
           name={dbUser.preferredName || dbUser.name}
           avatarUrl={dbUser.avatarUrl ?? null}
           role={dbUser.role}
         />
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-1">
           <MobileNavLinks role={dbUser.role} />
           <form action="/api/auth/logout" method="POST">
-            <button style={{ color: "var(--th-text-2)" }} className="text-xs hover:opacity-70 transition cursor-pointer">
+            <button
+              style={{ color: "var(--th-text-2)" }}
+              className="text-sm px-3 py-2.5 rounded-lg hover:opacity-70 transition cursor-pointer min-h-[44px] flex items-center"
+            >
               Log out
             </button>
           </form>
@@ -60,6 +64,8 @@ export default async function DashboardLayout({
         initialStatus={dbUser.status ?? null}
         initialStatusExpiresAt={dbUser.statusExpiresAt?.toISOString() ?? null}
       />
+      {/* Fixed settings button — mobile only, bottom-left */}
+      <MobileSettingsButton />
     </div>
   );
 }

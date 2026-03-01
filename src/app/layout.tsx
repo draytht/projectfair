@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -25,6 +25,13 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "NoCarry — Fair grading for group projects",
   description: "Track contributions, eliminate freeloaders, and grade group projects fairly.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({

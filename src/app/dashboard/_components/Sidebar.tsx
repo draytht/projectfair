@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { NavLinks } from "./NavLinks";
 import { SettingsModal } from "./SettingsModal";
 import { HomePanel } from "./HomePanel";
@@ -50,10 +50,36 @@ export function Sidebar({
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+
+  // Restore pinned state from localStorage
+  useEffect(() => {
+    setPinned(localStorage.getItem("nc-sidebar-pinned") === "true");
+  }, []);
+
+  const togglePin = useCallback(() => {
+    setPinned((prev) => {
+      const next = !prev;
+      localStorage.setItem("nc-sidebar-pinned", String(next));
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut: Ctrl+B / ⌘B
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault();
+        togglePin();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [togglePin]);
 
   return (
     <aside
-      className="nc-sidebar hidden md:flex shrink-0 flex-col"
+      className={`nc-sidebar hidden md:flex shrink-0 flex-col${pinned ? " nc-sidebar-pinned" : ""}`}
       style={{
         position: "relative",
         background: "var(--th-card)",
@@ -136,30 +162,27 @@ export function Sidebar({
           </div>
           <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
-      </div>
 
-      {/* Expand hint */}
-      <div
-        className="nc-sidebar-hint-icon"
-        style={{
-          position: "absolute",
-          bottom: 12,
-          left: 0,
-          width: 44,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          pointerEvents: "none",
-        }}
-      >
-        <svg
-          width="12" height="12" viewBox="0 0 12 12"
-          fill="none" stroke="var(--th-text-2)"
-          strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ animation: "nc-sidebar-hint 1.8s ease-in-out infinite" }}
+        {/* Pin / collapse toggle ─ always visible at bottom */}
+        <button
+          onClick={togglePin}
+          title={`${pinned ? "Collapse" : "Pin"} sidebar  Ctrl+B`}
+          className="nc-sidebar-pin-btn"
         >
-          <polyline points="4 2 8 6 4 10" />
-        </svg>
+          {/* Chevron: points right (→ pin) when collapsed, left (← collapse) when pinned */}
+          <svg
+            width="12" height="12" viewBox="0 0 12 12"
+            fill="none" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ flexShrink: 0, transition: "transform 0.22s ease", transform: pinned ? "rotate(180deg)" : "none" }}
+          >
+            <polyline points="4 2 8 6 4 10" />
+          </svg>
+          <span className="nc-sidebar-reveal" style={{ fontSize: 11 }}>
+            {pinned ? "Collapse" : "Pin sidebar"}
+          </span>
+          <span className="nc-sidebar-reveal nc-sidebar-kbd">Ctrl+B</span>
+        </button>
       </div>
 
       {homeOpen && (

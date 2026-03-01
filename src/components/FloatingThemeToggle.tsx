@@ -51,8 +51,14 @@ export function FloatingThemeToggle() {
         return;
       } catch {}
     }
-    // Default: bottom-right
-    setPos({ x: window.innerWidth - BTN_W - 24, y: window.innerHeight - BTN_H - 24 });
+    // Default: bottom-left on mobile (stacked above fixed settings button),
+    // bottom-right on desktop
+    const isMobile = window.innerWidth < 768;
+    setPos({
+      x: isMobile ? 16 : window.innerWidth - BTN_W - 24,
+      // On mobile: sit at bottom-80px so it clears the 44px settings button at bottom-24px
+      y: isMobile ? window.innerHeight - BTN_H - 84 : window.innerHeight - BTN_H - 24,
+    });
     setReady(true);
   }, []);
 

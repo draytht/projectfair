@@ -163,8 +163,9 @@ main {
   animation: nc-page-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Remove tap highlight on mobile */
+/* Remove tap highlight on mobile, eliminate 300ms delay */
 * { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"] { touch-action: manipulation; }
 
 /* Brand mark */
 .nc-brand {
@@ -201,12 +202,6 @@ main {
 }
 .nc-card-hover:hover {
   transform: translateY(-3px);
-}
-
-/* ── Sidebar expand hint pulse ───────────────────────────────────── */
-@keyframes nc-sidebar-hint {
-  0%, 100% { opacity: 0.3; transform: translateX(0); }
-  50%       { opacity: 0.7; transform: translateX(2px); }
 }
 
 /* ── Sidebar CSS-only hover system ──────────────────────────────── */
@@ -264,15 +259,6 @@ main {
   opacity: 1;
 }
 
-/* Hint icon hides on hover */
-.nc-sidebar-hint-icon {
-  opacity: 1;
-  transition: opacity 0.2s ease;
-}
-.nc-sidebar:hover .nc-sidebar-hint-icon {
-  opacity: 0;
-}
-
 /* Nav link icon centering: slides from centered → left-aligned */
 .nc-sidebar .nc-nav-link {
   padding-left: 14.5px; /* centers 15px icon in 44px strip */
@@ -299,6 +285,71 @@ main {
 }
 .nc-sidebar:hover .nc-sidebar-user {
   padding-left: 12px;
+}
+
+/* ── Sidebar pinned (locked expanded) ───────────────────────────── */
+.nc-sidebar.nc-sidebar-pinned {
+  width: 208px;
+  min-width: 208px;
+}
+/* Force all reveal/actions open when pinned */
+.nc-sidebar.nc-sidebar-pinned .nc-sidebar-reveal,
+.nc-sidebar.nc-sidebar-pinned .nc-sidebar-reveal-block {
+  max-width: 160px;
+  opacity: 1;
+}
+.nc-sidebar.nc-sidebar-pinned .nc-sidebar-actions {
+  max-height: 48px;
+  opacity: 1;
+}
+.nc-sidebar.nc-sidebar-pinned .nc-nav-link { padding-left: 0.75rem; }
+.nc-sidebar.nc-sidebar-pinned .nc-sidebar-brand { padding-left: 12px; }
+.nc-sidebar.nc-sidebar-pinned .nc-sidebar-user { padding-left: 12px; }
+
+/* ── Sidebar pin/collapse toggle button ─────────────────────────── */
+.nc-sidebar-pin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 0 0 16px; /* 16px left centers 12px icon in 44px strip */
+  background: none;
+  border: none;
+  border-top: 1px solid var(--th-border);
+  cursor: pointer;
+  color: var(--th-text-2);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: color 0.15s ease,
+              padding-left 0.22s cubic-bezier(0.16,1,0.3,1);
+}
+.nc-sidebar:hover .nc-sidebar-pin-btn,
+.nc-sidebar.nc-sidebar-pinned .nc-sidebar-pin-btn {
+  padding-left: 12px;
+}
+.nc-sidebar-pin-btn:hover {
+  color: var(--th-accent);
+}
+
+/* Keyboard shortcut badge inside the toggle button */
+.nc-sidebar-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--th-border);
+  color: var(--th-text-2);
+  font-size: 10px;
+  font-family: monospace;
+  opacity: 0.65;
+  margin-left: auto;
+  margin-right: 10px;
+  flex-shrink: 0;
+  vertical-align: middle;
 }
 
 /* ── Nav icon animations ─────────────────────────────────────────── */
@@ -569,6 +620,253 @@ main {
 @keyframes nc-orb-float {
   from { transform: translateY(0px) scale(1); }
   to   { transform: translateY(-14px) scale(1.05); }
+}
+
+/* ── Feature icon animations ──────────────────────────────────── */
+@keyframes nc-icon-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes nc-icon-check {
+  0%,  12% { stroke-dashoffset: 11; opacity: 0.3; }
+  48%, 82% { stroke-dashoffset: 0;  opacity: 1;   }
+  100%     { stroke-dashoffset: 11; opacity: 0.3; }
+}
+@keyframes nc-icon-flag {
+  0%,  100% { transform: rotate(0deg);  }
+  30%       { transform: rotate(7deg);  }
+  65%       { transform: rotate(-4deg); }
+}
+@keyframes nc-icon-blink {
+  0%,  85%, 100% { transform: scaleY(1);    }
+  92%            { transform: scaleY(0.08); }
+}
+@keyframes nc-icon-bar {
+  0%,  100% { transform: scaleY(0.5); }
+  50%       { transform: scaleY(1);   }
+}
+@keyframes nc-icon-col {
+  0%,  100% { transform: scaleY(1);   }
+  50%       { transform: scaleY(1.7); }
+}
+
+/* ── Problem card animations ──────────────────────────────────── */
+@keyframes nc-prob-bob {
+  0%,  100% { transform: translateY(0);    }
+  50%       { transform: translateY(-3px); }
+}
+@keyframes nc-prob-grade-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.82); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Mobile / touch utilities ───────────────────────────────────── */
+
+/* Enlarge tap target without changing layout */
+.nc-touch {
+  position: relative;
+}
+.nc-touch::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+
+/* Kanban horizontal scroll on mobile */
+.nc-kanban-scroll {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 8px;
+}
+.nc-kanban-scroll::-webkit-scrollbar { display: none; }
+
+.nc-kanban-col {
+  min-width: 280px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .nc-kanban-scroll {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+  .nc-kanban-col {
+    min-width: unset;
+  }
+}
+
+/* ── High-end dashboard / profile / project animations ─────────── */
+
+@keyframes nc-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes nc-bar-grow {
+  from { width: 0 !important; }
+}
+
+@keyframes nc-skeleton-pulse {
+  0%, 100% { opacity: 0.38; }
+  50%       { opacity: 0.72; }
+}
+
+@keyframes nc-warn-glow {
+  0%,  100% { box-shadow: 0 0 0 0   rgba(239,68,68,0);    }
+  50%        { box-shadow: 0 0 0 5px rgba(239,68,68,0.15); }
+}
+
+@keyframes nc-avatar-breathe {
+  0%,  100% {
+    box-shadow: 0 0 0 2px color-mix(in srgb,var(--th-accent) 20%,transparent),
+                0 0 0 5px color-mix(in srgb,var(--th-accent) 8%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in srgb,var(--th-accent) 38%,transparent),
+                0 0 0 8px color-mix(in srgb,var(--th-accent) 12%,transparent);
+  }
+}
+
+@keyframes nc-count-pop {
+  from { opacity: 0; transform: scale(0.6)  translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes nc-tab-content-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes nc-hero-shine {
+  0%   { transform: translateX(-120%) skewX(-12deg); opacity: 0;    }
+  15%  { opacity: 1; }
+  100% { transform: translateX(200%)  skewX(-12deg); opacity: 0;    }
+}
+
+@keyframes nc-activity-dot {
+  0%,  100% { box-shadow: 0 0 0 0   color-mix(in srgb,var(--th-accent) 0%,  transparent); }
+  50%        { box-shadow: 0 0 0 5px color-mix(in srgb,var(--th-accent) 18%, transparent); }
+}
+
+@keyframes nc-rank-in {
+  from { opacity: 0; transform: scale(0.4) rotate(-15deg); }
+  to   { opacity: 1; transform: scale(1)   rotate(0deg);   }
+}
+
+@keyframes nc-saved-pop {
+  0%   { transform: scale(0.7) rotate(-10deg); opacity: 0; }
+  60%  { transform: scale(1.15) rotate(3deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+}
+
+/* Utility classes */
+.nc-u-in {
+  animation: nc-slide-up 0.44s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+.nc-bar-anim {
+  animation: nc-bar-grow 1.2s cubic-bezier(0.16,1,0.3,1) both;
+  animation-delay: 0.4s;
+}
+
+.nc-stat-num {
+  animation: nc-count-pop 0.48s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.nc-tab-panel {
+  animation: nc-tab-content-in 0.28s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+.nc-skeleton {
+  animation: nc-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.nc-avatar-ring {
+  animation: nc-avatar-breathe 3.2s ease-in-out infinite;
+}
+
+.nc-warn-card {
+  animation: nc-warn-glow 2.6s ease-in-out infinite;
+}
+
+.nc-activity-dot {
+  animation: nc-activity-dot 3s ease-in-out infinite;
+}
+
+.nc-rank-badge {
+  animation: nc-rank-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* Hero card shine sweep (needs position:relative + overflow:hidden on parent) */
+.nc-hero-shine-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.nc-hero-shine-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    color-mix(in srgb,var(--th-accent) 7%,transparent) 50%,
+    transparent 65%
+  );
+  animation: nc-hero-shine 4.5s cubic-bezier(0.4,0,0.6,1) infinite;
+  animation-delay: 1.2s;
+  pointer-events: none;
+}
+
+/* Card hover lift */
+.nc-card-lift {
+  transition: transform 0.18s cubic-bezier(0.16,1,0.3,1), box-shadow 0.18s ease;
+}
+.nc-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* Row slide-right on hover */
+.nc-row-slide {
+  transition: transform 0.16s ease, background-color 0.14s ease;
+}
+.nc-row-slide:hover {
+  transform: translateX(4px);
+}
+
+/* Kanban task card hover */
+.nc-task-card {
+  transition: transform 0.16s cubic-bezier(0.16,1,0.3,1),
+              box-shadow 0.16s ease,
+              border-color 0.14s ease;
+}
+.nc-task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+/* Kanban column left accent borders */
+.nc-col-todo      { border-left: 2px solid rgba( 99,155,255,0.30) !important; }
+.nc-col-inprogress{ border-left: 2px solid rgba(251,146, 60,0.42) !important; }
+.nc-col-done      { border-left: 2px solid rgba( 52,199, 89,0.36) !important; }
+
+/* Activity feed timeline line */
+.nc-activity-feed {
+  position: relative;
+}
+.nc-activity-feed::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 20px;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--th-border), transparent);
+  pointer-events: none;
 }
 
 /* ── Theme variables ───────────────────────────────────────────── */

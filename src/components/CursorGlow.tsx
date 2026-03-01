@@ -7,6 +7,11 @@ export function CursorGlow() {
   const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
+    // Disable on touch-primary devices (phones/tablets)
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      setEnabled(false);
+      return;
+    }
     // Load initial pref
     setEnabled(localStorage.getItem("nc-cursor-glow") !== "false");
 
