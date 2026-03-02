@@ -658,6 +658,25 @@ button, a, [role="button"] { touch-action: manipulation; }
   to   { opacity: 1; transform: translateY(0)   scale(1);    }
 }
 
+/* ── Mobile performance: kill continuous animations on touch devices ─────── */
+/*
+ * Redefining @keyframes inside @media replaces them when the query matches.
+ * This stops infinite loops (spin, bob, float, etc.) from running on mobile
+ * where they cause scroll jank. One-shot transitions (page-in, grade-in) are
+ * left untouched so UI still feels responsive.
+ */
+@media (pointer: coarse) {
+  @keyframes nc-icon-spin  { to   { transform: rotate(0deg);   } }
+  @keyframes nc-icon-check { 100% { stroke-dashoffset: 0; opacity: 1; } }
+  @keyframes nc-icon-flag  { 100% { transform: rotate(0deg);   } }
+  @keyframes nc-icon-blink { 100% { transform: scaleY(1);      } }
+  @keyframes nc-icon-bar   { 100% { transform: scaleY(0.6);    } }
+  @keyframes nc-icon-col   { 100% { transform: scaleY(1);      } }
+  @keyframes nc-prob-bob   { 100% { transform: translateY(0);  } }
+  @keyframes nc-orb-float  { 100% { transform: perspective(600px) rotateX(12deg) rotateY(-18deg); } }
+  @keyframes asc-ribbon    { to   { transform: translateX(0);  } }
+}
+
 /* ── Mobile / touch utilities ───────────────────────────────────── */
 
 /* Enlarge tap target without changing layout */

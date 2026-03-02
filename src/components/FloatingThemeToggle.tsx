@@ -215,7 +215,6 @@ export function FloatingThemeToggle() {
             boxShadow: isDragging
               ? "0 16px 48px rgba(0,0,0,0.3)"
               : "0 4px 20px rgba(0,0,0,0.2)",
-            backdropFilter: "blur(14px)",
             whiteSpace: "nowrap",
           }}
         >
