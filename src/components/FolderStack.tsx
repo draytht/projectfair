@@ -200,7 +200,8 @@ export function FolderStack() {
     const gl = document.createElement("canvas").getContext("webgl2")
              ?? document.createElement("canvas").getContext("webgl");
     const low = typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 2;
-    setMode(!gl || low ? "css" : "webgl");
+    const isMobile = window.matchMedia("(pointer: coarse)").matches;
+    setMode(!gl || low || isMobile ? "css" : "webgl");
   }, []);
 
   if (mode === "loading") return null;

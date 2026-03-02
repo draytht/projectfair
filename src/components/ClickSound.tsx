@@ -186,6 +186,7 @@ export function ClickSound() {
   useEffect(() => {
     const init = () => getCtx(ctxRef);
     const muted = () => localStorage.getItem("nc-sound") === "false";
+    const isTouch = window.matchMedia("(pointer: coarse)").matches;
 
     // ── Click / tap ───────────────────────────────────────────────────────────
     function onMouseDown(e: MouseEvent) {
@@ -206,9 +207,9 @@ export function ClickSound() {
       // inputs: handled by focus event below
     }
 
-    // ── Hover — plays once per element entry ──────────────────────────────────
+    // ── Hover — plays once per element entry (desktop only) ──────────────────
     function onMouseOver(e: MouseEvent) {
-      if (muted()) return;
+      if (muted() || isTouch) return;
       const now = Date.now();
 
       const el = (e.target as Element)?.closest(SEL_ALL);

@@ -63,6 +63,14 @@ export function Component({
     className
 }: ShadowOverlayProps) {
     const id = useInstanceId();
+    // SVG turbulence + displacement filters are not GPU-accelerated on mobile —
+    // skip the entire component on touch devices to prevent lag.
+    const [isMobile, setIsMobile] = React.useState(false);
+    useEffect(() => {
+        setIsMobile(window.matchMedia("(pointer: coarse)").matches);
+    }, []);
+    if (isMobile) return null;
+
     const animationEnabled = animation && animation.scale > 0;
     const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
     const hueRotateMotionValue = useMotionValue(180);
