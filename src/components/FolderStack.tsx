@@ -210,6 +210,7 @@ export function FolderStack() {
     <Canvas camera={{ position: [0.4, 1.9, 5.8], fov: 40, near: 0.1, far: 100 }}
       dpr={[1, 1.5]} performance={{ min: 0.5 }}
       gl={{ alpha: true, antialias: true }}
+      onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
       style={{ background: "transparent", width: "100%", height: "100%" }}>
       <AdaptiveDpr pixelated />
       <Scene cfg={cfg} />

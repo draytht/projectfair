@@ -495,38 +495,7 @@ export default function LandingPage() {
 
         {/* Right: 3D folder stack */}
         <div className="nc-hero-scene-wrap">
-          {/* Radial glow — driven by theme accent, seamless blending */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--th-accent) 14%, transparent) 0%, transparent 70%)",
-              pointerEvents: "none",
-              zIndex: 0,
-            }}
-          />
-
-          {/* The folder stack — full width/height of container */}
-          <div style={{ position: "relative", width: "100%", height: "100%", zIndex: 1 }}>
-            <FolderStack />
-          </div>
-
-          {/* Edge fades — dissolve the 3D scene into the background on all sides */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: `
-                linear-gradient(to bottom,  color-mix(in srgb, var(--th-bg) 60%, transparent) 0%, transparent 22%, transparent 72%, color-mix(in srgb, var(--th-bg) 55%, transparent) 100%),
-                linear-gradient(to right,   color-mix(in srgb, var(--th-bg) 40%, transparent) 0%, transparent 20%, transparent 80%, color-mix(in srgb, var(--th-bg) 40%, transparent) 100%)
-              `,
-              pointerEvents: "none",
-              zIndex: 2,
-            }}
-          />
-
+          <FolderStack />
         </div>
       </section>
 
