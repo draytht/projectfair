@@ -186,6 +186,7 @@ export function ClickSound() {
   useEffect(() => {
     const init = () => getCtx(ctxRef);
     const muted = () => localStorage.getItem("nc-sound") === "false";
+    const isTouch = window.matchMedia("(pointer: coarse)").matches;
 
     // ── Click / tap ───────────────────────────────────────────────────────────
     function onMouseDown(e: MouseEvent) {
@@ -206,9 +207,9 @@ export function ClickSound() {
       // inputs: handled by focus event below
     }
 
-    // ── Hover — plays once per element entry ──────────────────────────────────
+    // ── Hover — plays once per element entry (desktop only) ──────────────────
     function onMouseOver(e: MouseEvent) {
-      if (muted()) return;
+      if (muted() || isTouch) return;
       const now = Date.now();
 
       const el = (e.target as Element)?.closest(SEL_ALL);
@@ -253,15 +254,21 @@ export function ClickSound() {
     }
 
     document.addEventListener("mousedown",  onMouseDown,  { passive: true });
-    document.addEventListener("mouseover",  onMouseOver,  { passive: true });
     document.addEventListener("focus",      onFocus,      { capture: true, passive: true });
     document.addEventListener("touchstart", onTouchStart, { passive: true });
+    // Hover sounds only on pointer devices — mouseover fires on every touch drag
+    // on mobile causing unnecessary DOM traversal and audio synthesis attempts
+    if (!isTouch) {
+      document.addEventListener("mouseover", onMouseOver, { passive: true });
+    }
 
     return () => {
       document.removeEventListener("mousedown",  onMouseDown);
-      document.removeEventListener("mouseover",  onMouseOver);
       document.removeEventListener("focus",      onFocus,      { capture: true });
       document.removeEventListener("touchstart", onTouchStart);
+      if (!isTouch) {
+        document.removeEventListener("mouseover", onMouseOver);
+      }
     };
   }, []);
 

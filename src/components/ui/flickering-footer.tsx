@@ -123,13 +123,19 @@ function FlickeringGrid({
     // ctx is guaranteed non-null here (early return above)
     const c = ctx;
 
+    let visible = false;
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) draw();
+    }, { threshold: 0 });
+
     function draw() {
+      if (!visible) return;
       const w = canvas!.width;
       const h = canvas!.height;
       c.clearRect(0, 0, w, h);
 
       const [r, g, b] = resolveHex(color);
-      // Diagonal shimmer wave: travels left→right with slight vertical lean
       const t = performance.now() / 1000;
 
       for (let row = 0; row < rows; row++) {
@@ -138,11 +144,9 @@ function FlickeringGrid({
           const lit = inText(col, row, w, h);
 
           if (lit) {
-            // Two overlapping sine waves at different speeds/phases create
-            // a beating shimmer that sweeps diagonally across the text
             const phase = (col / cols) * Math.PI * 6 - (row / rows) * Math.PI * 1.5;
-            const wave1 = (Math.sin(t * 2.2 - phase) + 1) / 2;          // fast sweep
-            const wave2 = (Math.sin(t * 0.8 - phase * 0.6 + 1.3) + 1) / 2; // slow pulse
+            const wave1 = (Math.sin(t * 2.2 - phase) + 1) / 2;
+            const wave2 = (Math.sin(t * 0.8 - phase * 0.6 + 1.3) + 1) / 2;
             const shine = wave1 * 0.65 + wave2 * 0.35;
             const op = maxOpacity * (0.28 + shine * 0.72);
             c.fillStyle = `rgba(${r},${g},${b},${op})`;
@@ -153,7 +157,6 @@ function FlickeringGrid({
               squareSize,
             );
           } else {
-            // Background: very sparse, slow random drift — barely visible
             if (Math.random() < 0.0018) {
               squares[idx] = Math.random() * maxOpacity * 0.09;
             }
@@ -174,7 +177,7 @@ function FlickeringGrid({
     }
 
     resize();
-    draw();
+    io.observe(container);
 
     const ro = new ResizeObserver(resize);
     ro.observe(container);
@@ -182,6 +185,7 @@ function FlickeringGrid({
     return () => {
       cancelAnimationFrame(animId);
       ro.disconnect();
+      io.disconnect();
     };
   }, [squareSize, gridGap, color, maxOpacity, flickerChance, text]);
 

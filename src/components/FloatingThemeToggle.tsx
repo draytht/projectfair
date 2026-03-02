@@ -74,15 +74,20 @@ export function FloatingThemeToggle() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // ── Close dropdown on outside click ──────────────────────────
+  // ── Close dropdown on outside click / tap ────────────────────
   useEffect(() => {
     if (!open) return;
-    function onDown(e: MouseEvent) {
+    function onOutside(e: MouseEvent | TouchEvent) {
       const root = document.getElementById("nc-float-toggle");
-      if (root && !root.contains(e.target as Node)) setOpen(false);
+      const target = (e instanceof TouchEvent ? e.touches[0]?.target : e.target) as Node | null;
+      if (root && target && !root.contains(target)) setOpen(false);
     }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("mousedown", onOutside);
+    document.addEventListener("touchstart", onOutside, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("touchstart", onOutside);
+    };
   }, [open]);
 
   const savePos = useCallback((p: Pos) => {
@@ -139,7 +144,7 @@ export function FloatingThemeToggle() {
       const t = ev.touches[0];
       const dx = t.clientX - drag.current.startMouse.x;
       const dy = t.clientY - drag.current.startMouse.y;
-      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) drag.current.moved = true;
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) drag.current.moved = true;
       setPos({
         x: clamp(drag.current.startPos.x + dx, 0, window.innerWidth - BTN_W),
         y: clamp(drag.current.startPos.y + dy, 0, window.innerHeight - BTN_H),
@@ -210,7 +215,6 @@ export function FloatingThemeToggle() {
             boxShadow: isDragging
               ? "0 16px 48px rgba(0,0,0,0.3)"
               : "0 4px 20px rgba(0,0,0,0.2)",
-            backdropFilter: "blur(14px)",
             whiteSpace: "nowrap",
           }}
         >
@@ -259,7 +263,7 @@ export function FloatingThemeToggle() {
             return (
               <button
                 key={t.id}
-                onClick={() => { setTheme(t.id); setOpen(false); }}
+                onPointerDown={(e) => { e.stopPropagation(); setTheme(t.id); setOpen(false); }}
                 style={{
                   display: "flex",
                   alignItems: "center",

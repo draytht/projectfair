@@ -63,11 +63,19 @@ export function Component({
     className
 }: ShadowOverlayProps) {
     const id = useInstanceId();
-    const animationEnabled = animation && animation.scale > 0;
+
+    // All hooks must run unconditionally before any early return.
+    const [isMobile, setIsMobile] = React.useState(false);
     const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
     const hueRotateMotionValue = useMotionValue(180);
     const hueRotateAnimation = useRef<AnimationPlaybackControls | null>(null);
 
+    useEffect(() => {
+        setIsMobile(window.matchMedia("(pointer: coarse)").matches);
+    }, []);
+
+    // animationEnabled is false on mobile so the framer-motion loop never starts
+    const animationEnabled = !isMobile && !!(animation && animation.scale > 0);
     const displacementScale = animation ? mapRange(animation.scale, 1, 100, 20, 100) : 0;
     const animationDuration = animation ? mapRange(animation.speed, 1, 100, 1000, 50) : 1;
 
@@ -98,6 +106,24 @@ export function Component({
             };
         }
     }, [animationEnabled, animationDuration, hueRotateMotionValue]);
+
+    // Mobile: lightweight CSS-only gradient — no SVG filters, no framer-motion,
+    // fully GPU-composited, looks seamless across all themes.
+    if (isMobile) {
+        return (
+            <div
+                className={className}
+                style={{ overflow: "hidden", position: "relative", width: "100%", height: "100%", ...style }}
+            >
+                <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: `radial-gradient(ellipse 85% 65% at 38% 44%, ${color}, transparent)`,
+                    opacity: 0.85,
+                }} />
+            </div>
+        );
+    }
 
     return (
         <div
