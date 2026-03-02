@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Component as EtherealShadow } from "@/components/ui/etheral-shadow";
 
 function LoginForm() {
   const router = useRouter();
@@ -47,9 +48,19 @@ function LoginForm() {
 
   return (
     <div
-      style={{ background: "var(--th-bg)", color: "var(--th-text)" }}
+      style={{ color: "var(--th-text)" }}
       className="min-h-screen flex flex-col items-center justify-center px-6"
     >
+      {/* Full-page ethereal background */}
+      <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: -1, background: "var(--th-bg)", pointerEvents: "none" }}>
+        <EtherealShadow
+          color="var(--th-accent)"
+          animation={{ scale: 45, speed: 95 }}
+          noise={{ opacity: 0.4, scale: 1.0 }}
+          sizing="fill"
+          style={{ opacity: 0.18 }}
+        />
+      </div>
       <Link href="/" className="nc-brand mb-10">
         <span className="nc-brand-dot" />
         <span className="nc-brand-text">

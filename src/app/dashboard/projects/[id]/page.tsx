@@ -7,6 +7,22 @@ import { createClient } from "@/lib/supabase/client";
 
 type User = { id: string; name: string; preferredName?: string | null; avatarUrl?: string | null };
 
+type MemberFullProfile = {
+  id: string;
+  name: string;
+  preferredName: string | null;
+  bio: string | null;
+  school: string | null;
+  major: string | null;
+  avatarUrl: string | null;
+  githubUrl: string | null;
+  linkedinUrl: string | null;
+  personalLinks: unknown;
+  status: string | null;
+  statusExpiresAt: string | null;
+  role: string;
+};
+
 function initials(name: string) {
   const parts = name.trim().split(" ");
   return parts.length >= 2
@@ -123,6 +139,9 @@ export default function ProjectPage() {
   const [currentUserGlobalRole, setCurrentUserGlobalRole] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [viewingMember, setViewingMember] = useState<{ member: Member; profile: MemberFullProfile | null; loading: boolean } | null>(null);
+  const [boardSwipeIdx, setBoardSwipeIdx] = useState(0);
+  const swipeRef = useRef<{ startX: number; startY: number } | null>(null);
 
   useEffect(() => {
     fetch(`/api/projects/${id}/contributions`)
@@ -278,6 +297,32 @@ export default function ProjectPage() {
     }
   }
 
+  async function openMemberProfile(member: Member) {
+    setViewingMember({ member, profile: null, loading: true });
+    const res = await fetch(`/api/users/${member.user.id}`);
+    if (res.ok) {
+      const profile: MemberFullProfile = await res.json();
+      setViewingMember({ member, profile, loading: false });
+    } else {
+      setViewingMember({ member, profile: null, loading: false });
+    }
+  }
+
+  function onBoardTouchStart(e: React.TouchEvent) {
+    swipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
+  }
+
+  function onBoardTouchEnd(e: React.TouchEvent) {
+    if (!swipeRef.current) return;
+    const dx = e.changedTouches[0].clientX - swipeRef.current.startX;
+    const dy = e.changedTouches[0].clientY - swipeRef.current.startY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 44) {
+      if (dx < 0) setBoardSwipeIdx((i) => Math.min(i + 1, 2));
+      else setBoardSwipeIdx((i) => Math.max(i - 1, 0));
+    }
+    swipeRef.current = null;
+  }
+
   if (loading)
     return <p style={{ color: "var(--th-text-2)" }} className="text-sm p-8">Loading...</p>;
   if (!project)
@@ -311,7 +356,7 @@ export default function ProjectPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div>
-          <h2 style={{ color: "var(--th-text)" }} className="text-2xl font-bold tracking-tight">
+          <h2 className="nc-page-title">
             {project.name}
           </h2>
           {project.courseCode && (
@@ -325,12 +370,12 @@ export default function ProjectPage() {
             </p>
           )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 flex-wrap shrink-0">
           {currentUserGlobalRole === "PROFESSOR" && (
             <Link
               href={`/dashboard/monitor/${id}`}
               style={{ border: "1px solid var(--th-accent)", color: "var(--th-accent)" }}
-              className="text-sm px-3 py-1.5 rounded-md hover:opacity-70 transition"
+              className="text-sm px-3 py-2.5 rounded-md hover:opacity-70 transition min-h-[44px] flex items-center"
             >
               Monitor View
             </Link>
@@ -338,14 +383,14 @@ export default function ProjectPage() {
           <Link
             href={`/dashboard/projects/${id}/review`}
             style={{ border: "1px solid var(--th-border)", color: "var(--th-text-2)" }}
-            className="text-sm px-3 py-1.5 rounded-md hover:opacity-70 transition"
+            className="text-sm px-3 py-2.5 rounded-md hover:opacity-70 transition min-h-[44px] flex items-center"
           >
             Peer Review
           </Link>
           <Link
             href={`/dashboard/projects/${id}/tasks/new`}
             style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-            className="text-sm px-3 py-1.5 rounded-md font-medium hover:opacity-80 transition"
+            className="text-sm px-3 py-2.5 rounded-md font-medium hover:opacity-80 transition min-h-[44px] flex items-center"
           >
             + Task
           </Link>
@@ -365,11 +410,18 @@ export default function ProjectPage() {
                 <div
                   key={m.id}
                   style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-                  className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1"
+                  className="flex items-center gap-2 rounded-full pl-1.5 pr-2.5 py-1.5 min-h-[36px]"
                 >
-                  <MemberAvatar user={m.user} size={22} />
-                  <span style={{ color: "var(--th-text)" }} className="text-xs">{m.user.preferredName || m.user.name}</span>
-                  <span style={{ color: "var(--th-text-2)" }} className="text-xs">· {m.role.toLowerCase().replace("_", " ")}</span>
+                  <button
+                    onClick={() => openMemberProfile(m)}
+                    title={`View ${m.user.preferredName || m.user.name}'s profile`}
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition"
+                    style={{ background: "none", border: "none", padding: 0 }}
+                  >
+                    <MemberAvatar user={m.user} size={22} />
+                    <span style={{ color: "var(--th-text)" }} className="text-xs">{m.user.preferredName || m.user.name}</span>
+                    <span style={{ color: "var(--th-text-2)" }} className="text-xs">· {m.role.toLowerCase().replace("_", " ")}</span>
+                  </button>
                   {canKick && (
                     <button
                       onClick={() => kickMember(m.id)}
@@ -387,7 +439,7 @@ export default function ProjectPage() {
               <Link
                 href={`/dashboard/projects/${id}/invite`}
                 style={{ border: "1px solid var(--th-border)", color: "var(--th-text-2)" }}
-                className="text-xs rounded-full px-3 py-1 hover:opacity-70 transition"
+                className="text-xs rounded-full px-3 py-2 hover:opacity-70 transition min-h-[36px] flex items-center"
               >
                 + Invite
               </Link>
@@ -395,8 +447,8 @@ export default function ProjectPage() {
             {myMember && myMember.role !== "TEAM_LEADER" && (
               <button
                 onClick={() => leaveProject(myMember.id)}
-                style={{ color: "#ef4444", fontSize: 11, cursor: "pointer" }}
-                className="hover:opacity-70 transition ml-1"
+                style={{ color: "#ef4444", fontSize: 12, cursor: "pointer" }}
+                className="hover:opacity-70 transition ml-1 px-2 py-1.5 min-h-[36px] flex items-center"
               >
                 Leave project
               </button>
@@ -406,7 +458,7 @@ export default function ProjectPage() {
       })()}
 
       {/* Tabs */}
-      <div style={{ borderBottom: "1px solid var(--th-border)" }} className="flex gap-1 mb-6 overflow-x-auto">
+      <div style={{ borderBottom: "1px solid var(--th-border)" }} className="flex gap-0 mb-6 overflow-x-auto -mx-1 px-1">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -417,8 +469,9 @@ export default function ProjectPage() {
                 : "2px solid transparent",
               color: tab === t.key ? "var(--th-accent)" : "var(--th-text-2)",
               marginBottom: "-1px",
+              transition: "color 0.15s, border-color 0.15s",
             }}
-            className="px-4 py-2 text-sm font-medium transition cursor-pointer whitespace-nowrap shrink-0"
+            className="px-3 md:px-4 py-3 text-sm font-medium cursor-pointer whitespace-nowrap shrink-0 min-h-[44px] flex items-center"
           >
             {t.label}
           </button>
@@ -429,88 +482,185 @@ export default function ProjectPage() {
       {tab === "board" && (() => {
         const myMember = project.members.find((m) => m.user.id === currentUserId);
         const isPrivileged = myMember?.role === "TEAM_LEADER" || myMember?.role === "PROFESSOR";
-        return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {COLUMNS.map((col) => (
-            <div
-              key={col.status}
-              style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-              className="rounded-xl p-4"
-            >
-              <h3 style={{ color: "var(--th-text-2)" }} className="text-xs uppercase tracking-widest mb-3">
-                {col.label} ({col.tasks.length})
-              </h3>
-              <div className="space-y-2">
-                {col.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    style={{ background: "var(--th-bg)", border: "1px solid var(--th-border)" }}
-                    className="rounded-lg p-3"
-                  >
-                    <p style={{ color: "var(--th-text)" }} className="text-sm font-semibold">
-                      {task.title}
+        const colClass: Record<string, string> = {
+          TODO: "nc-col-todo",
+          IN_PROGRESS: "nc-col-inprogress",
+          DONE: "nc-col-done",
+        };
+
+        // Shared task card renderer used by both mobile + desktop
+        function renderTaskCards(col: typeof COLUMNS[number]) {
+          return (
+            <div className="space-y-2">
+              {col.tasks.map((task) => (
+                <div
+                  key={task.id}
+                  style={{ background: "var(--th-bg)", border: "1px solid var(--th-border)" }}
+                  className="nc-task-card rounded-lg p-3"
+                >
+                  <p style={{ color: "var(--th-text)" }} className="text-sm font-semibold">{task.title}</p>
+                  {task.assignee && (
+                    <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1">
+                      {task.assignee.preferredName || task.assignee.name}
                     </p>
-                    {task.assignee && (
-                      <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1">
-                        {task.assignee.preferredName || task.assignee.name}
-                      </p>
-                    )}
-                    {task.dueDate && (
-                      <p style={{ color: "var(--th-text-2)" }} className="text-xs">
-                        Due {new Date(task.dueDate).toLocaleDateString()}
-                      </p>
-                    )}
-                    {task.status === "DONE" && task.completedAt && (
-                      <p style={{ color: "var(--th-accent)" }} className="text-xs">
-                        Done {new Date(task.completedAt).toLocaleTimeString()}
-                      </p>
-                    )}
-                    {(() => {
-                      const isAssignee = task.assigneeId === currentUserId;
-                      const canAction = isAssignee;
-                      const canEdit = isAssignee || isPrivileged;
-                      if (!canAction && !canEdit) return null;
-                      return (
-                        <div className="flex items-center gap-3 mt-2">
-                          {canAction && (
-                            <button
-                              onClick={() => moveTask(task)}
-                              disabled={updating === task.id}
-                              style={{ color: "var(--th-accent)" }}
-                              className="text-xs hover:opacity-70 transition disabled:opacity-30 cursor-pointer"
-                            >
-                              {updating === task.id ? "Updating..." : `→ ${STATUS_LABEL[task.status]}`}
-                            </button>
-                          )}
-                          {canEdit && (
-                            <button
-                              onClick={() => openEdit(task)}
-                              style={{ color: "var(--th-text-2)" }}
-                              className="text-xs hover:opacity-70 transition cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
+                  )}
+                  {task.dueDate && (
+                    <p style={{ color: "var(--th-text-2)" }} className="text-xs">
+                      Due {new Date(task.dueDate).toLocaleDateString()}
+                    </p>
+                  )}
+                  {task.status === "DONE" && task.completedAt && (
+                    <p style={{ color: "var(--th-accent)" }} className="text-xs">
+                      Done {new Date(task.completedAt).toLocaleTimeString()}
+                    </p>
+                  )}
+                  {(() => {
+                    const isAssignee = task.assigneeId === currentUserId;
+                    const canAction = isAssignee;
+                    const canEdit = isAssignee || isPrivileged;
+                    if (!canAction && !canEdit) return null;
+                    return (
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {canAction && (
+                          <button
+                            onClick={() => moveTask(task)}
+                            disabled={updating === task.id}
+                            style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-accent) 30%,transparent)", borderRadius: 6 }}
+                            className="text-xs px-2.5 py-1.5 hover:opacity-70 transition disabled:opacity-30 cursor-pointer min-h-[32px] flex items-center"
+                          >
+                            {updating === task.id ? "…" : `→ ${STATUS_LABEL[task.status]}`}
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => openEdit(task)}
+                            style={{ color: "var(--th-text-2)", border: "1px solid var(--th-border)", borderRadius: 6 }}
+                            className="text-xs px-2.5 py-1.5 hover:opacity-70 transition cursor-pointer min-h-[32px] flex items-center"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ))}
+              {col.tasks.length === 0 && (
+                <p style={{ color: "var(--th-text-2)" }} className="text-xs text-center py-10 opacity-50">Empty</p>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <>
+            {/* ── Mobile: Tinder-style swipe view ──────────────────── */}
+            <div
+              className="md:hidden nc-tab-panel"
+              onTouchStart={onBoardTouchStart}
+              onTouchEnd={onBoardTouchEnd}
+              style={{ touchAction: "pan-y" }}
+            >
+              {/* Column selector pills */}
+              <div className="flex gap-2 mb-4 justify-center">
+                {COLUMNS.map((col, i) => (
+                  <button
+                    key={col.status}
+                    onClick={() => setBoardSwipeIdx(i)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: boardSwipeIdx === i ? 600 : 400,
+                      background: boardSwipeIdx === i ? "var(--th-accent)" : "var(--th-card)",
+                      color: boardSwipeIdx === i ? "var(--th-accent-fg)" : "var(--th-text-2)",
+                      border: boardSwipeIdx === i ? "1px solid var(--th-accent)" : "1px solid var(--th-border)",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {col.label} · {col.tasks.length}
+                  </button>
                 ))}
-                {col.tasks.length === 0 && (
-                  <p style={{ color: "var(--th-text-2)" }} className="text-xs text-center py-4">
-                    Empty
-                  </p>
-                )}
+              </div>
+
+              {/* Sliding rail */}
+              <div style={{ overflow: "hidden", borderRadius: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    transform: `translateX(${-boardSwipeIdx * 100}%)`,
+                    transition: "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                    willChange: "transform",
+                  }}
+                >
+                  {COLUMNS.map((col) => (
+                    <div
+                      key={col.status}
+                      style={{
+                        minWidth: "100%",
+                        flexShrink: 0,
+                        background: "var(--th-card)",
+                        border: "1px solid var(--th-border)",
+                        borderRadius: 16,
+                        padding: 16,
+                      }}
+                      className={colClass[col.status] ?? ""}
+                    >
+                      <h3 style={{ color: "var(--th-text-2)" }} className="text-xs uppercase tracking-widest mb-3">
+                        {col.label} ({col.tasks.length})
+                      </h3>
+                      {renderTaskCards(col)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dot / progress indicators */}
+              <div className="flex justify-center gap-2 mt-4">
+                {COLUMNS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setBoardSwipeIdx(i)}
+                    style={{
+                      width: boardSwipeIdx === i ? 22 : 6,
+                      height: 6,
+                      borderRadius: 999,
+                      background: boardSwipeIdx === i ? "var(--th-accent)" : "var(--th-border)",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                      transition: "all 0.25s ease",
+                    }}
+                  />
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* ── Desktop: normal 3-column grid ────────────────────── */}
+            <div className="hidden md:block nc-tab-panel">
+              <div className="nc-kanban-scroll">
+                {COLUMNS.map((col) => (
+                  <div
+                    key={col.status}
+                    style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
+                    className={`nc-kanban-col rounded-xl p-4 ${colClass[col.status] ?? ""}`}
+                  >
+                    <h3 style={{ color: "var(--th-text-2)" }} className="text-xs uppercase tracking-widest mb-3">
+                      {col.label} ({col.tasks.length})
+                    </h3>
+                    {renderTaskCards(col)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         );
       })()}
 
       {/* Contributions Tab */}
       {tab === "contributions" && (
-        <div className="space-y-4">
+        <div className="nc-tab-panel space-y-4">
           {contributions.length === 0 ? (
             <div className="text-center py-24">
               <p style={{ color: "var(--th-text-2)" }} className="text-sm">No contributions yet.</p>
@@ -519,33 +669,62 @@ export default function ProjectPage() {
               </p>
             </div>
           ) : (
-            contributions.map((s, i) => (
+            contributions.map((s, i) => {
+              const RANK_COLORS = [
+                { bg: "rgba(255,200,50,0.12)", border: "rgba(255,200,50,0.35)", text: "#e8a020" },
+                { bg: "rgba(180,190,200,0.12)", border: "rgba(180,190,200,0.35)", text: "#9aaab4" },
+                { bg: "rgba(200,120,60,0.12)", border: "rgba(200,120,60,0.35)", text: "#c87840" },
+              ];
+              const rank = RANK_COLORS[i] ?? null;
+              return (
               <div
                 key={s.userId}
-                style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-                className="rounded-xl p-5"
+                style={{
+                  background: "var(--th-card)",
+                  border: `1px solid ${rank ? rank.border : "var(--th-border)"}`,
+                  animationDelay: `${i * 0.07}s`,
+                }}
+                className="nc-u-in nc-card-lift rounded-xl p-5"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span style={{ color: "var(--th-text-2)" }} className="text-sm font-bold">
-                      #{i + 1}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    {rank ? (
+                      <span
+                        className="nc-rank-badge"
+                        style={{
+                          background: rank.bg,
+                          color: rank.text,
+                          border: `1px solid ${rank.border}`,
+                          borderRadius: 8,
+                          padding: "2px 8px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          animationDelay: `${0.1 + i * 0.07}s`,
+                        }}
+                      >
+                        #{i + 1}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--th-text-2)" }} className="text-sm font-bold">
+                        #{i + 1}
+                      </span>
+                    )}
                     <span style={{ color: "var(--th-text)" }} className="font-semibold text-base">
                       {s.name}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span style={{ color: "var(--th-accent)" }} className="text-3xl font-black">
+                    <span style={{ color: rank ? rank.text : "var(--th-accent)" }} className="text-3xl font-black">
                       {s.percentage}%
                     </span>
                     <p style={{ color: "var(--th-text-2)" }} className="text-xs">{s.points} pts</p>
                   </div>
                 </div>
 
-                <div style={{ background: "var(--th-border)" }} className="w-full h-1.5 rounded-full mb-4">
+                <div style={{ background: "var(--th-border)" }} className="w-full h-1.5 rounded-full mb-4 overflow-hidden">
                   <div
-                    style={{ background: "var(--th-accent)", width: `${s.percentage}%` }}
-                    className="h-1.5 rounded-full transition-all"
+                    style={{ background: rank ? rank.text : "var(--th-accent)", width: `${s.percentage}%` }}
+                    className="nc-bar-anim h-1.5 rounded-full"
                   />
                 </div>
 
@@ -567,14 +746,15 @@ export default function ProjectPage() {
                   ))}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
 
       {/* History Tab */}
       {tab === "history" && (
-        <div>
+        <div className="nc-tab-panel">
           {history.length === 0 ? (
             <div className="text-center py-24">
               <p style={{ color: "var(--th-text-2)" }} className="text-sm">No history yet.</p>
@@ -589,11 +769,11 @@ export default function ProjectPage() {
                   (a, b) =>
                     new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime()
                 )
-                .map((task) => (
+                .map((task, i) => (
                   <div
                     key={task.id}
-                    style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-                    className="rounded-lg p-4 flex items-center justify-between"
+                    style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", animationDelay: `${i * 0.04}s` }}
+                    className="nc-u-in nc-row-slide rounded-lg p-4 flex items-center justify-between"
                   >
                     <div>
                       <p
@@ -616,7 +796,7 @@ export default function ProjectPage() {
                       </div>
                     </div>
                     <span
-                      style={{ color: "var(--th-accent)", border: "1px solid var(--th-accent)" }}
+                      style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-accent) 40%,transparent)", background: "color-mix(in srgb,var(--th-accent) 10%,transparent)" }}
                       className="text-xs px-2 py-1 rounded-full"
                     >
                       Done
@@ -630,7 +810,7 @@ export default function ProjectPage() {
 
       {/* Files Tab */}
       {tab === "files" && (
-        <div>
+        <div className="nc-tab-panel">
           <div className="flex items-center justify-between mb-4">
             <p style={{ color: "var(--th-text-2)" }} className="text-xs">
               Upload documents, designs, or any files for this project.
@@ -698,21 +878,37 @@ export default function ProjectPage() {
 
       {/* Activity Tab */}
       {tab === "activity" && (
-        <div className="max-w-xl">
+        <div className="nc-tab-panel max-w-xl">
           {activity.length === 0 ? (
             <div className="text-center py-24">
               <p style={{ color: "var(--th-text-2)" }} className="text-sm">No activity yet.</p>
             </div>
           ) : (
-            <div className="space-y-0">
+            <div className="nc-activity-feed space-y-0">
               {activity.map((item, i) => (
                 <div
                   key={item.id}
                   className="flex items-start gap-3 py-3"
                   style={{ borderBottom: i < activity.length - 1 ? "1px solid var(--th-border)" : "none" }}
                 >
-                  {/* Actor avatar */}
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--th-accent)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  {/* Actor avatar — acts as timeline node */}
+                  <div
+                    className={i === 0 ? "nc-activity-dot" : ""}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "var(--th-accent)",
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      marginTop: 1,
+                      position: "relative",
+                      zIndex: 1,
+                    }}
+                  >
                     {item.actorAvatar ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.actorAvatar} alt={item.actorName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -741,6 +937,135 @@ export default function ProjectPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Member Profile Modal */}
+      {viewingMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+          onClick={() => setViewingMember(null)}
+        >
+          <div
+            className="nc-member-card w-full"
+            style={{
+              maxWidth: 360,
+              borderRadius: 20,
+              padding: "28px 24px",
+              background: "color-mix(in srgb, var(--th-card) 72%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--th-border) 60%, transparent)",
+              backdropFilter: "blur(24px) saturate(180%)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.28), 0 1px 0 color-mix(in srgb, var(--th-accent) 12%, transparent) inset",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {viewingMember.loading ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--th-border)" }} className="animate-pulse" />
+                <div style={{ width: 120, height: 12, borderRadius: 6, background: "var(--th-border)" }} className="animate-pulse" />
+                <div style={{ width: 80, height: 10, borderRadius: 6, background: "var(--th-border)" }} className="animate-pulse" />
+              </div>
+            ) : viewingMember.profile ? (() => {
+              const p = viewingMember.profile!;
+              const displayName = p.preferredName || p.name;
+              const links = Array.isArray(p.personalLinks) ? p.personalLinks as { label: string; url: string }[] : [];
+              const statusValid = p.status && (!p.statusExpiresAt || new Date(p.statusExpiresAt) > new Date());
+              return (
+                <div className="flex flex-col items-center gap-4">
+                  {/* Avatar */}
+                  <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--th-accent)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 0 3px color-mix(in srgb, var(--th-accent) 20%, transparent)" }}>
+                    {p.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.avatarUrl} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ color: "var(--th-accent-fg)", fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
+                        {initials(displayName)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Name + role */}
+                  <div className="text-center">
+                    <p style={{ color: "var(--th-text)" }} className="text-lg font-bold leading-tight">{displayName}</p>
+                    {p.preferredName && p.name !== p.preferredName && (
+                      <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-0.5">{p.name}</p>
+                    )}
+                    <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                      <span
+                        style={{ background: "color-mix(in srgb, var(--th-accent) 14%, transparent)", color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-accent) 30%, transparent)" }}
+                        className="text-xs px-2.5 py-0.5 rounded-full font-medium"
+                      >
+                        {viewingMember.member.role.toLowerCase().replace("_", " ")}
+                      </span>
+                      {statusValid && (
+                        <span style={{ color: "var(--th-text-2)" }} className="text-xs">· {p.status}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info rows */}
+                  {(p.bio || p.school || p.major) && (
+                    <div style={{ borderTop: "1px solid color-mix(in srgb, var(--th-border) 50%, transparent)", width: "100%", paddingTop: 16 }} className="space-y-2">
+                      {p.bio && (
+                        <p style={{ color: "var(--th-text-2)" }} className="text-xs leading-relaxed text-center">{p.bio}</p>
+                      )}
+                      {(p.school || p.major) && (
+                        <p style={{ color: "var(--th-text-2)" }} className="text-xs text-center">
+                          {[p.major, p.school].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Links */}
+                  {(p.githubUrl || p.linkedinUrl || links.length > 0) && (
+                    <div style={{ borderTop: "1px solid color-mix(in srgb, var(--th-border) 50%, transparent)", width: "100%", paddingTop: 14 }} className="flex flex-wrap gap-2 justify-center">
+                      {p.githubUrl && (
+                        <a
+                          href={p.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-border) 70%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 500, textDecoration: "none" }}
+                          className="hover:opacity-70 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          GitHub
+                        </a>
+                      )}
+                      {p.linkedinUrl && (
+                        <a
+                          href={p.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-border) 70%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 500, textDecoration: "none" }}
+                          className="hover:opacity-70 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          LinkedIn
+                        </a>
+                      )}
+                      {links.map((l, i) => (
+                        <a
+                          key={i}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-border) 70%, transparent)", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 500, textDecoration: "none" }}
+                          className="hover:opacity-70 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {l.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })() : (
+              <p style={{ color: "var(--th-text-2)" }} className="text-sm text-center py-6">Could not load profile.</p>
+            )}
+          </div>
         </div>
       )}
 

@@ -19,7 +19,7 @@ export default async function ProjectsPage() {
     <div>
       <div className="flex items-center justify-between mb-10">
         <div>
-          <h2 style={{ color: "var(--th-text)" }} className="text-2xl font-bold tracking-tight">
+          <h2 className="nc-page-title">
             My Projects
           </h2>
           <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1">

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
 import { NavLinks } from "./NavLinks";
 import { SettingsModal } from "./SettingsModal";
+import { HomePanel } from "./HomePanel";
 
 function initials(name: string) {
   const parts = name.trim().split(" ");
@@ -48,84 +48,98 @@ export function Sidebar({
   name: string;
   avatarUrl: string | null;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [ready, setReady] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [homeOpen, setHomeOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
 
+  // Restore pinned state from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("nc-sidebar-collapsed");
-    if (stored === "true") setCollapsed(true);
-    setReady(true);
+    setPinned(localStorage.getItem("nc-sidebar-pinned") === "true");
   }, []);
 
-  function toggle() {
-    const next = !collapsed;
-    setCollapsed(next);
-    localStorage.setItem("nc-sidebar-collapsed", String(next));
-  }
+  const togglePin = useCallback(() => {
+    setPinned((prev) => {
+      const next = !prev;
+      localStorage.setItem("nc-sidebar-pinned", String(next));
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut: Ctrl+B / ⌘B
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault();
+        togglePin();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [togglePin]);
 
   return (
     <aside
-      className="hidden md:flex shrink-0 flex-col"
+      className={`nc-sidebar hidden md:flex shrink-0 flex-col${pinned ? " nc-sidebar-pinned" : ""}`}
       style={{
         position: "relative",
         background: "var(--th-card)",
         borderRight: "1px solid var(--th-border)",
-        width: ready ? (collapsed ? 44 : 208) : 208,
-        minWidth: ready ? (collapsed ? 44 : 208) : 208,
-        transition: ready ? "width 0.2s ease, min-width 0.2s ease" : "none",
         overflow: "hidden",
       }}
     >
-      {/* Inner content — always 208px wide, clipped when collapsed */}
-      <div className="flex flex-col flex-1 gap-1 py-6" style={{ width: 208, minWidth: 208 }}>
+      <div className="flex flex-col flex-1 py-6" style={{ width: "100%" }}>
 
         {/* Brand */}
-        <Link
-          href="/"
-          className="nc-brand px-3 mb-6"
-          tabIndex={collapsed ? -1 : 0}
+        <button
+          onClick={() => setHomeOpen(true)}
+          className="nc-brand nc-sidebar-brand"
           style={{
-            opacity: collapsed ? 0 : 1,
-            transition: "opacity 0.1s",
-            pointerEvents: collapsed ? "none" : "auto",
+            marginBottom: 24,
+            height: 28,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            width: "100%",
+            paddingRight: 12,
           }}
         >
-          <span className="nc-brand-dot" />
-          <span className="nc-brand-text">
+          <span className="nc-brand-dot" style={{ flexShrink: 0 }} />
+          <span className="nc-sidebar-reveal nc-brand-text">
             No<span style={{ color: "var(--th-accent)" }}>Carry</span>
           </span>
-        </Link>
+        </button>
 
         {/* Nav links */}
-        <div
-          style={{
-            opacity: collapsed ? 0 : 1,
-            transition: "opacity 0.1s",
-            pointerEvents: collapsed ? "none" : "auto",
-          }}
-        >
-          <NavLinks role={role} />
-        </div>
+        <NavLinks role={role} />
 
-        {/* Bottom: avatar + user info + logout */}
+        {/* Bottom: avatar + info + actions */}
         <div
-          className="mt-auto pt-4 space-y-3 px-3"
-          style={{
-            borderTop: "1px solid var(--th-border)",
-            opacity: collapsed ? 0 : 1,
-            transition: "opacity 0.1s",
-            pointerEvents: collapsed ? "none" : "auto",
-          }}
+          className="mt-auto"
+          style={{ borderTop: "1px solid var(--th-border)", paddingTop: 16 }}
         >
-          <div className="flex items-center gap-2">
+          {/* Avatar row */}
+          <div
+            className="nc-sidebar-user"
+            style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 12 }}
+          >
             <Avatar url={avatarUrl} name={name} size={28} />
-            <div className="min-w-0">
-              <p style={{ color: "var(--th-text)" }} className="text-xs font-medium truncate">{name}</p>
-              <p style={{ color: "var(--th-text-2)" }} className="text-xs capitalize">{role.toLowerCase()}</p>
+            <div className="nc-sidebar-reveal-block" style={{ minWidth: 0 }}>
+              <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 500 }} className="truncate">{name}</p>
+              <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }} className="capitalize">{role.toLowerCase()}</p>
             </div>
           </div>
-          <div className="flex items-center justify-between">
+
+          {/* Logout + settings */}
+          <div
+            className="nc-sidebar-actions"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0 12px",
+              marginTop: 12,
+            }}
+          >
             <form action="/api/auth/logout" method="POST">
               <button
                 style={{ color: "var(--th-text-2)" }}
@@ -148,43 +162,37 @@ export function Sidebar({
           </div>
           <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
+
+        {/* Pin / collapse toggle ─ always visible at bottom */}
+        <button
+          onClick={togglePin}
+          title={`${pinned ? "Collapse" : "Pin"} sidebar  Ctrl+B`}
+          className="nc-sidebar-pin-btn"
+        >
+          {/* Chevron: points right (→ pin) when collapsed, left (← collapse) when pinned */}
+          <svg
+            width="12" height="12" viewBox="0 0 12 12"
+            fill="none" stroke="currentColor"
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ flexShrink: 0, transition: "transform 0.22s ease", transform: pinned ? "rotate(180deg)" : "none" }}
+          >
+            <polyline points="4 2 8 6 4 10" />
+          </svg>
+          <span className="nc-sidebar-reveal" style={{ fontSize: 11 }}>
+            {pinned ? "Collapse" : "Pin sidebar"}
+          </span>
+          <span className="nc-sidebar-reveal nc-sidebar-kbd">Ctrl+B</span>
+        </button>
       </div>
 
-      {/* Toggle handle — vertically centered on the right edge, always visible */}
-      <button
-        onClick={toggle}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        style={{
-          position: "absolute",
-          right: 0,
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: 20,
-          height: 52,
-          borderRadius: "6px 0 0 6px",
-          background: "var(--th-bg)",
-          border: "1px solid var(--th-border)",
-          borderRight: "none",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          color: "var(--th-text-2)",
-          fontSize: 16,
-          zIndex: 10,
-          transition: "background 0.15s, color 0.15s",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--th-accent)";
-          (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--th-accent) 8%, var(--th-bg))";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--th-text-2)";
-          (e.currentTarget as HTMLButtonElement).style.background = "var(--th-bg)";
-        }}
-      >
-        {collapsed ? "›" : "‹"}
-      </button>
+      {homeOpen && (
+        <HomePanel
+          name={name}
+          avatarUrl={avatarUrl}
+          role={role}
+          onClose={() => setHomeOpen(false)}
+        />
+      )}
     </aside>
   );
 }

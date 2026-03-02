@@ -70,6 +70,7 @@ export function NavLinks({ role }: { role: string }) {
       <Link
         key={href}
         href={href}
+        title={label}
         className="nc-nav-link"
         style={
           active
@@ -81,7 +82,7 @@ export function NavLinks({ role }: { role: string }) {
         }
       >
         {icon}
-        {label}
+        <span className="nc-sidebar-reveal">{label}</span>
       </Link>
     );
   }
@@ -114,7 +115,7 @@ export function MobileNavLinks({ role }: { role: string }) {
         key={href}
         href={href}
         style={{ color: active ? "var(--th-accent)" : "var(--th-text-2)" }}
-        className="text-xs hover:opacity-70 transition"
+        className="text-sm font-medium px-3 py-2.5 rounded-lg hover:opacity-70 transition flex items-center min-h-[44px]"
       >
         {label}
       </Link>
