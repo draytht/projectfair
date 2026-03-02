@@ -4,6 +4,9 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { CTAButton } from "@/components/CTAButton";
+import { Component as EtherealShadow } from "@/components/ui/etheral-shadow";
+import { AutoScrollingClientCarousel } from "@/components/ui/auto-scrolling-carousel";
+import { FlickeringFooter } from "@/components/ui/flickering-footer";
 
 // 3D folder stack — loaded client-side only, zero SSR cost
 const FolderStack = dynamic(
@@ -56,7 +59,7 @@ function Reveal({
 function OverloadViz() {
   return (
     <svg
-      width="80" height="44" viewBox="0 0 80 44"
+      width="52" height="29" viewBox="0 0 80 44"
       fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"
       style={{ display: "block", color: "var(--th-accent)" }}
     >
@@ -93,10 +96,10 @@ function RandomGradeViz() {
       <div
         key={i}
         style={{
-          width: 46, height: 46, borderRadius: 10, flexShrink: 0,
+          width: 32, height: 32, borderRadius: 7, flexShrink: 0,
           border: "1px solid color-mix(in srgb, var(--th-accent) 28%, var(--th-border))",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: "var(--font-display)", fontSize: "1.35rem", fontWeight: 700,
+          fontFamily: "var(--font-display)", fontSize: "0.95rem", fontWeight: 700,
           color: "var(--th-accent)",
           animation: "nc-prob-grade-in 0.28s ease-out",
         }}
@@ -104,7 +107,7 @@ function RandomGradeViz() {
         {GRADES[i]}
       </div>
       {/* Rubric lines — static, same rubric, different grade every time */}
-      <svg width="30" height="16" viewBox="0 0 30 16" fill="none"
+      <svg width="22" height="12" viewBox="0 0 30 16" fill="none"
         stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.3">
         <line x1="0" y1="2"  x2="30" y2="2"  />
         <line x1="0" y1="8"  x2="22" y2="8"  />
@@ -132,7 +135,7 @@ function BiasedReviewViz() {
               opacity: active ? 1 : 0.18, transition: "opacity 0.5s" }}
           >
             {[0, 1, 2, 3, 4].map((idx) => (
-              <svg key={idx} width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <svg key={idx} width="9" height="9" viewBox="0 0 13 13" fill="none">
                 <path d="M6.5 1 8 4.5H12L9 6.8l1.2 3.7L6.5 8.3 3.8 10.5 5 6.8 2 4.5h4z"
                   fill={idx < filled ? "var(--th-accent)" : "none"}
                   stroke="var(--th-accent)" strokeWidth="1" strokeLinejoin="round"
@@ -140,7 +143,7 @@ function BiasedReviewViz() {
                 />
               </svg>
             ))}
-            <span style={{ fontSize: "0.6rem", color: "var(--th-accent)", fontWeight: 600,
+            <span style={{ fontSize: "0.5rem", color: "var(--th-accent)", fontWeight: 600,
               marginLeft: 2, letterSpacing: "0.04em", textTransform: "uppercase" }}>
               {isFriend ? "friend" : "contributor"}
             </span>
@@ -196,19 +199,20 @@ function ProblemCard({
             opacity: 0.5,
           }}
         />
-        <span
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "2.5rem",
-            color: "color-mix(in srgb, var(--th-accent) 18%, var(--th-border))",
-            lineHeight: 1, display: "block",
-            marginBottom: 20, letterSpacing: "-0.02em",
-          }}
-        >
-          {n}
-        </span>
-        {/* Animated illustration */}
-        <div style={{ marginBottom: 20 }}>{visual}</div>
+        {/* Number + animated illustration inline */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "2.5rem",
+              color: "color-mix(in srgb, var(--th-accent) 18%, var(--th-border))",
+              lineHeight: 1, letterSpacing: "-0.02em", flexShrink: 0,
+            }}
+          >
+            {n}
+          </span>
+          <div style={{ flexShrink: 0 }}>{visual}</div>
+        </div>
         <h3 style={{ color: "var(--th-text)", fontWeight: 600, fontSize: "0.9375rem", marginBottom: 8, lineHeight: 1.4 }}>
           {title}
         </h3>
@@ -361,7 +365,17 @@ const features = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <main style={{ background: "var(--th-bg)", color: "var(--th-text)" }} className="min-h-screen nc-landing">
+    <main style={{ color: "var(--th-text)" }} className="min-h-screen nc-landing">
+      {/* ── Full-page ethereal background ─────────────────────────────── */}
+      <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: -1, background: "var(--th-bg)", pointerEvents: "none" }}>
+        <EtherealShadow
+          color="var(--th-accent)"
+          animation={{ scale: 50, speed: 95 }}
+          noise={{ opacity: 0.4, scale: 1.0 }}
+          sizing="fill"
+          style={{ opacity: 0.20 }}
+        />
+      </div>
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav
@@ -498,16 +512,16 @@ export default function LandingPage() {
             <FolderStack />
           </div>
 
-          {/* Seamless bottom fade — blends scene into page background */}
+          {/* Edge fades — dissolve the 3D scene into the background on all sides */}
           <div
             aria-hidden="true"
             style={{
               position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 80,
-              background: "linear-gradient(to bottom, transparent, var(--th-bg))",
+              inset: 0,
+              background: `
+                linear-gradient(to bottom,  color-mix(in srgb, var(--th-bg) 60%, transparent) 0%, transparent 22%, transparent 72%, color-mix(in srgb, var(--th-bg) 55%, transparent) 100%),
+                linear-gradient(to right,   color-mix(in srgb, var(--th-bg) 40%, transparent) 0%, transparent 20%, transparent 80%, color-mix(in srgb, var(--th-bg) 40%, transparent) 100%)
+              `,
               pointerEvents: "none",
               zIndex: 2,
             }}
@@ -518,6 +532,11 @@ export default function LandingPage() {
 
       {/* ── Divider ───────────────────────────────────────────────────────── */}
       <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto px-6" />
+
+      {/* ── Tech stack ────────────────────────────────────────────────────── */}
+      <AutoScrollingClientCarousel title="Built with" speed={30} />
+
+      <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
 
       {/* ── Problems ──────────────────────────────────────────────────────── */}
       <section className="px-6 md:px-10 py-16 max-w-5xl mx-auto">
@@ -660,16 +679,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer
-        style={{ borderTop: "1px solid var(--th-border)", color: "var(--th-text-2)" }}
-        className="px-6 md:px-10 py-5 flex items-center justify-between text-xs"
-      >
-        <Link href="/" className="nc-brand">
-          <span className="nc-brand-dot" style={{ width: 5, height: 5 }} />
-          <span style={{ fontWeight: 600, fontSize: "0.75rem", color: "var(--th-text-2)" }}>NoCarry</span>
-        </Link>
-        <span>Built for students. Trusted by professors.</span>
-      </footer>
+      <FlickeringFooter />
     </main>
   );
 }
