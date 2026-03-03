@@ -45,7 +45,7 @@ function useTheme() {
 }
 
 // ── The folder ────────────────────────────────────────────────────────────────
-function Folder({ cfg }: { cfg: Cfg }) {
+function Folder({ cfg, mobile }: { cfg: Cfg; mobile: boolean }) {
   const wrapRef  = useRef<THREE.Group>(null);
   const pivotRef = useRef<THREE.Group>(null);
   const mouse    = useRef({ x: 0, y: 0 });
@@ -55,18 +55,32 @@ function Folder({ cfg }: { cfg: Cfg }) {
   useEffect(() => { openTgt.current = hovered ? Math.PI * 0.58 : 0; }, [hovered]);
 
   useEffect(() => {
-    const mv = (e: MouseEvent) => {
-      mouse.current = {
-        x:  (e.clientX / window.innerWidth  - 0.5) * 2,
-        y: -(e.clientY / window.innerHeight - 0.5) * 2,
+    if (mobile) {
+      // Touch tilt on mobile
+      const onTouch = (e: TouchEvent) => {
+        const t = e.touches[0];
+        if (!t) return;
+        mouse.current = {
+          x:  (t.clientX / window.innerWidth  - 0.5) * 2,
+          y: -(t.clientY / window.innerHeight - 0.5) * 2,
+        };
       };
-    };
-    window.addEventListener("mousemove", mv);
-    return () => window.removeEventListener("mousemove", mv);
-  }, []);
+      window.addEventListener("touchmove", onTouch, { passive: true });
+      return () => window.removeEventListener("touchmove", onTouch);
+    } else {
+      const mv = (e: MouseEvent) => {
+        mouse.current = {
+          x:  (e.clientX / window.innerWidth  - 0.5) * 2,
+          y: -(e.clientY / window.innerHeight - 0.5) * 2,
+        };
+      };
+      window.addEventListener("mousemove", mv);
+      return () => window.removeEventListener("mousemove", mv);
+    }
+  }, [mobile]);
 
   useFrame((state, dt) => {
-    const k = Math.min(1, dt * 6);
+    const k = Math.min(1, dt * (mobile ? 4 : 6));
     if (wrapRef.current) {
       wrapRef.current.rotation.x = THREE.MathUtils.lerp(wrapRef.current.rotation.x, mouse.current.y *  0.09, k);
       wrapRef.current.rotation.y = THREE.MathUtils.lerp(wrapRef.current.rotation.y, mouse.current.x * -0.13, k);
@@ -82,33 +96,35 @@ function Folder({ cfg }: { cfg: Cfg }) {
   const linesZ  = -FB + 0.038;
   const pivotZ  = FC / 2 + 0.004;
 
+  // Smoothness — lower on mobile to reduce vertex count
+  const sm = mobile ? 2 : 4;
+  const smSm = mobile ? 1 : 3;
+
   return (
     <group ref={wrapRef} rotation={[0.10, -0.22, 0.02]}
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
+      onPointerEnter={() => !mobile && setHovered(true)}
+      onPointerLeave={() => !mobile && setHovered(false)}
     >
       {/* ── Back panel ───────────────────────────────────────────────────── */}
-      <RoundedBox args={[FW, FH, FB]} radius={0.04} smoothness={4} position={[0, 0, -FB / 2]}>
-        <meshPhysicalMaterial
-          color={cfg.body}
-          roughness={0.78}
-          metalness={0}
-          clearcoat={0.10}
-          clearcoatRoughness={0.65}
-        />
+      <RoundedBox args={[FW, FH, FB]} radius={0.04} smoothness={sm} position={[0, 0, -FB / 2]}>
+        {mobile ? (
+          <meshStandardMaterial color={cfg.body} roughness={0.78} metalness={0} />
+        ) : (
+          <meshPhysicalMaterial color={cfg.body} roughness={0.78} metalness={0} clearcoat={0.10} clearcoatRoughness={0.65} />
+        )}
       </RoundedBox>
 
       {/* ── Spine strip — thin fold seam at the bottom where back meets cover */}
       <mesh position={[0, -FH / 2 + 0.03, -FB / 4]}>
         <boxGeometry args={[FW - 0.01, 0.06, FB / 2 + FC / 2 + 0.012]} />
-        <meshPhysicalMaterial color={cfg.body} roughness={0.85} metalness={0} />
+        <meshStandardMaterial color={cfg.body} roughness={0.85} metalness={0} />
       </mesh>
 
       {/* ── Papers (5 sheets, fanned slightly) ───────────────────────────── */}
       {[0, 1, 2, 3, 4].map((i) => (
-        <RoundedBox key={i} args={[FW - 0.28, FH - 0.22, 0.007]} radius={0.025} smoothness={3}
+        <RoundedBox key={i} args={[FW - 0.28, FH - 0.22, 0.007]} radius={0.025} smoothness={smSm}
           position={[i * 0.014, i * 0.006 - 0.01, paperZ(i)]}>
-          <meshPhysicalMaterial color={cfg.paper} roughness={0.92} metalness={0} />
+          <meshStandardMaterial color={cfg.paper} roughness={0.92} metalness={0} />
         </RoundedBox>
       ))}
 
@@ -123,27 +139,23 @@ function Folder({ cfg }: { cfg: Cfg }) {
       {/* ── Cover — hinged at bottom edge ────────────────────────────────── */}
       <group position={[0, -FH / 2, pivotZ]} ref={pivotRef}>
         {/* Main cover panel */}
-        <RoundedBox args={[FW, FH, FC]} radius={0.04} smoothness={4}
+        <RoundedBox args={[FW, FH, FC]} radius={0.04} smoothness={sm}
           position={[0, FH / 2, 0]}>
-          <meshPhysicalMaterial
-            color={cfg.cover}
-            roughness={0.72}
-            metalness={0}
-            clearcoat={0.20}
-            clearcoatRoughness={0.50}
-          />
+          {mobile ? (
+            <meshStandardMaterial color={cfg.cover} roughness={0.72} metalness={0} />
+          ) : (
+            <meshPhysicalMaterial color={cfg.cover} roughness={0.72} metalness={0} clearcoat={0.20} clearcoatRoughness={0.50} />
+          )}
         </RoundedBox>
 
         {/* Tab — top-left corner, continuous with cover */}
-        <RoundedBox args={[0.72, 0.20, FC]} radius={0.035} smoothness={3}
+        <RoundedBox args={[0.72, 0.20, FC]} radius={0.035} smoothness={smSm}
           position={[-FW / 2 + 0.46, FH + 0.10, 0]}>
-          <meshPhysicalMaterial
-            color={cfg.cover}
-            roughness={0.72}
-            metalness={0}
-            clearcoat={0.20}
-            clearcoatRoughness={0.50}
-          />
+          {mobile ? (
+            <meshStandardMaterial color={cfg.cover} roughness={0.72} metalness={0} />
+          ) : (
+            <meshPhysicalMaterial color={cfg.cover} roughness={0.72} metalness={0} clearcoat={0.20} clearcoatRoughness={0.50} />
+          )}
         </RoundedBox>
       </group>
     </group>
@@ -151,42 +163,29 @@ function Folder({ cfg }: { cfg: Cfg }) {
 }
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
-function Scene({ cfg }: { cfg: Cfg }) {
+function Scene({ cfg, mobile }: { cfg: Cfg; mobile: boolean }) {
   return (
     <>
       {/* Three-point studio lighting */}
       <hemisphereLight args={["#dce8ff", "#1a1f2e", cfg.ambient]} />
       <directionalLight position={[4, 7, 5]}  color={cfg.key}   intensity={cfg.keyI} />
       <directionalLight position={[-5, 1, 3]} color="#b0c8ff"   intensity={0.55} />
-      <pointLight       position={[0, -3, 4]} color="#ffffff"    intensity={0.30} />
+      {!mobile && <pointLight position={[0, -3, 4]} color="#ffffff" intensity={0.30} />}
 
-      <Folder cfg={cfg} />
+      <Folder cfg={cfg} mobile={mobile} />
 
-      {/* Soft drop shadow — grounds the folder */}
-      <ContactShadows
-        position={[0, -1.45, 0]}
-        opacity={0.38}
-        scale={7}
-        blur={2.8}
-        far={3.5}
-        color="#000000"
-      />
+      {/* Soft drop shadow — skipped on mobile for performance */}
+      {!mobile && (
+        <ContactShadows
+          position={[0, -1.45, 0]}
+          opacity={0.38}
+          scale={7}
+          blur={2.8}
+          far={3.5}
+          color="#000000"
+        />
+      )}
     </>
-  );
-}
-
-// ── CSS fallback ──────────────────────────────────────────────────────────────
-function FolderFallback() {
-  return (
-    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{
-        width: 200, height: 165, borderRadius: 8,
-        background: "var(--th-accent)",
-        transform: "perspective(600px) rotateX(12deg) rotateY(-18deg)",
-        boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
-        animation: "nc-orb-float 4s ease-in-out infinite alternate",
-      }} />
-    </div>
   );
 }
 
@@ -194,27 +193,28 @@ function FolderFallback() {
 export function FolderStack() {
   const theme = useTheme();
   const cfg   = THEMES[theme] ?? DFLT;
-  const [mode, setMode] = useState<"loading" | "webgl" | "css">("loading");
+  const [mobile, setMobile] = useState(false);
+  const [ready, setReady]   = useState(false);
 
   useEffect(() => {
-    const gl = document.createElement("canvas").getContext("webgl2")
-             ?? document.createElement("canvas").getContext("webgl");
-    const low = typeof navigator.hardwareConcurrency === "number" && navigator.hardwareConcurrency <= 2;
     const isMobile = window.matchMedia("(pointer: coarse)").matches;
-    setMode(!gl || low || isMobile ? "css" : "webgl");
+    setMobile(isMobile);
+    setReady(true);
   }, []);
 
-  if (mode === "loading") return null;
-  if (mode === "css") return <FolderFallback />;
+  if (!ready) return null;
 
   return (
-    <Canvas camera={{ position: [0.4, 1.9, 5.8], fov: 40, near: 0.1, far: 100 }}
-      dpr={[1, 1.5]} performance={{ min: 0.5 }}
-      gl={{ alpha: true, antialias: true }}
+    <Canvas
+      camera={{ position: [0.4, 1.9, 5.8], fov: 40, near: 0.1, far: 100 }}
+      dpr={mobile ? [1, 1] : [1, 1.5]}
+      performance={{ min: 0.5 }}
+      gl={{ alpha: true, antialias: !mobile }}
       onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
-      style={{ background: "transparent", width: "100%", height: "100%" }}>
+      style={{ background: "transparent", width: "100%", height: "100%" }}
+    >
       <AdaptiveDpr pixelated />
-      <Scene cfg={cfg} />
+      <Scene cfg={cfg} mobile={mobile} />
     </Canvas>
   );
 }

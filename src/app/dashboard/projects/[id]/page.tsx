@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import ProjectChat from "./_components/ProjectChat";
 
 type User = { id: string; name: string; preferredName?: string | null; avatarUrl?: string | null };
 
@@ -112,7 +113,7 @@ type ActivityItem = {
   createdAt: string;
 };
 
-type Tab = "board" | "history" | "contributions" | "files" | "activity";
+type Tab = "board" | "history" | "contributions" | "files" | "activity" | "chat";
 
 type EditState = {
   task: Task;
@@ -349,6 +350,7 @@ export default function ProjectPage() {
     { key: "contributions", label: "Contributions" },
     { key: "files", label: files.length > 0 ? `Files (${files.length})` : "Files" },
     { key: "activity", label: "Activity" },
+    { key: "chat", label: "Chat" },
   ];
 
   return (
@@ -938,6 +940,11 @@ export default function ProjectPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Chat Tab */}
+      {tab === "chat" && currentUserId && (
+        <ProjectChat projectId={id} currentUserId={currentUserId} />
       )}
 
       {/* Member Profile Modal */}

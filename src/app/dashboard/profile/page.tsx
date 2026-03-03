@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ChangePasswordModal } from "../_components/ChangePasswordModal";
 
 type PersonalLink = { label: string; url: string };
 
@@ -47,8 +48,18 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pwOpen, setPwOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-open change-password overlay when linked from Settings via #password
+  useEffect(() => {
+    if (window.location.hash === "#password") {
+      setPwOpen(true);
+      // Clean the hash without a page reload
+      history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -531,6 +542,41 @@ export default function ProfilePage() {
           </div>
         </form>
       </div>
+
+      {/* Change Password card */}
+      <div
+        id="password"
+        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 12, animationDelay: "0.18s" }}
+        className="nc-u-in p-6"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 style={{ color: "var(--th-text)", fontWeight: 600, fontSize: "0.9375rem", margin: 0 }}>Password</h2>
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem", margin: "4px 0 0" }}>
+              Choose a strong, unique password for your account.
+            </p>
+          </div>
+          <button
+            onClick={() => setPwOpen(true)}
+            style={{
+              padding: "8px 18px", borderRadius: 8, border: "1px solid var(--th-border)",
+              background: "var(--th-bg)", color: "var(--th-text)", fontSize: 13, fontWeight: 500,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 7, flexShrink: 0,
+              transition: "border-color 0.15s, opacity 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--th-accent)")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--th-border)")}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--th-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Change Password
+          </button>
+        </div>
+      </div>
+
+      <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
     </div>
   );
 }

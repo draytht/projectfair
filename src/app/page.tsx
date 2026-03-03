@@ -14,6 +14,88 @@ const FolderStack = dynamic(
   { ssr: false, loading: () => null }
 );
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => { setMobile(window.matchMedia("(pointer: coarse)").matches); }, []);
+  return mobile;
+}
+
+// ── User feedbacks fetched from the public API ────────────────────────────────
+type FeedbackItem = { id: string; name: string; role: string | null; message: string; rating: number; createdAt: string };
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <svg key={s} width="11" height="11" viewBox="0 0 12 12" fill="none">
+          <path d="M6 1 7.5 4.5H11L8.5 6.8l1 3.2L6 8.2 2.5 10l1-3.2L1 4.5h3.5z"
+            fill={s <= rating ? "var(--th-accent)" : "none"}
+            stroke="var(--th-accent)" strokeWidth="0.8" strokeLinejoin="round"
+            opacity={s <= rating ? 1 : 0.25} />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+function UserFeedbacksSection() {
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/feedback")
+      .then((r) => r.json())
+      .then((data: FeedbackItem[]) => { setFeedbacks(Array.isArray(data) ? data : []); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  // Don't render the section if no approved feedbacks yet
+  if (loaded && feedbacks.length === 0) return null;
+
+  return (
+    <section className="px-6 md:px-10 py-16 max-w-5xl mx-auto">
+      <Reveal>
+        <div className="flex items-center gap-3 mb-10">
+          <div style={{ width: 20, height: 1.5, background: "var(--th-accent)" }} />
+          <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 600 }}>
+            What users say
+          </p>
+        </div>
+      </Reveal>
+
+      {!loaded ? (
+        // Skeleton
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ borderRadius: 14, background: "var(--th-card)", border: "1px solid var(--th-border)", padding: "20px 20px 18px", opacity: 0.5 }}>
+              <div style={{ width: "40%", height: 8, borderRadius: 4, background: "var(--th-border)", marginBottom: 14 }} />
+              <div style={{ width: "100%", height: 6, borderRadius: 4, background: "var(--th-border)", marginBottom: 8 }} />
+              <div style={{ width: "75%", height: 6, borderRadius: 4, background: "var(--th-border)" }} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {feedbacks.map((fb, i) => (
+            <Reveal key={fb.id} delay={i * 70}>
+              <div style={{ borderRadius: 14, background: "var(--th-card)", border: "1px solid var(--th-border)", padding: "20px 20px 18px", display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
+                <StarRating rating={fb.rating} />
+                <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", lineHeight: 1.65, flex: 1, margin: 0 }}>
+                  "{fb.message}"
+                </p>
+                <div style={{ borderTop: "1px solid var(--th-border)", paddingTop: 10 }}>
+                  <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 600, margin: 0 }}>{fb.name}</p>
+                  {fb.role && <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", margin: "2px 0 0" }}>{fb.role}</p>}
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ── Scroll-triggered reveal ───────────────────────────────────────────────────
 function Reveal({
   children,
@@ -364,17 +446,20 @@ const features = [
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const mobile = useIsMobile();
   return (
     <main style={{ color: "var(--th-text)" }} className="min-h-screen nc-landing">
-      {/* ── Full-page ethereal background ─────────────────────────────── */}
+      {/* ── Full-page ethereal background — skipped on mobile for performance ── */}
       <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: -1, background: "var(--th-bg)", pointerEvents: "none" }}>
-        <EtherealShadow
-          color="var(--th-accent)"
-          animation={{ scale: 50, speed: 95 }}
-          noise={{ opacity: 0.4, scale: 1.0 }}
-          sizing="fill"
-          style={{ opacity: 0.20 }}
-        />
+        {!mobile && (
+          <EtherealShadow
+            color="var(--th-accent)"
+            animation={{ scale: 50, speed: 95 }}
+            noise={{ opacity: 0.4, scale: 1.0 }}
+            sizing="fill"
+            style={{ opacity: 0.20 }}
+          />
+        )}
       </div>
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
@@ -504,6 +589,11 @@ export default function LandingPage() {
 
       {/* ── Tech stack ────────────────────────────────────────────────────── */}
       <AutoScrollingClientCarousel title="Built with" speed={30} />
+
+      <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
+
+      {/* ── User Feedbacks ────────────────────────────────────────────────── */}
+      <UserFeedbacksSection />
 
       <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
 
