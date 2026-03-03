@@ -14,6 +14,10 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+// Invalidate stale singleton if it's missing newly generated models
+const cached = globalForPrisma.prisma;
+const isStale = cached && !("chatMessage" in cached);
+
+export const prisma = (!cached || isStale) ? createPrismaClient() : cached;
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
