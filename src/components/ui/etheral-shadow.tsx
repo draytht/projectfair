@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useRef, useId, useEffect, CSSProperties } from 'react';
-import { animate, useMotionValue, AnimationPlaybackControls } from 'framer-motion';
 
-// Type definitions
 interface ResponsiveImage {
     src: string;
     alt?: string;
@@ -40,19 +38,20 @@ function mapRange(
     toLow: number,
     toHigh: number
 ): number {
-    if (fromLow === fromHigh) {
-        return toLow;
-    }
+    if (fromLow === fromHigh) return toLow;
     const percentage = (value - fromLow) / (fromHigh - fromLow);
     return toLow + percentage * (toHigh - toLow);
 }
 
 const useInstanceId = (): string => {
     const id = useId();
-    const cleanId = id.replace(/:/g, "");
-    const instanceId = `shadowoverlay-${cleanId}`;
-    return instanceId;
+    return `shadowoverlay-${id.replace(/:/g, "")}`;
 };
+
+// How many times per second the SVG filter hue value is updated.
+// Lower = less GPU/CPU work. 30 is imperceptible for a slow ambient blob.
+const FILTER_UPDATE_FPS = 30;
+const FILTER_INTERVAL_MS = 1000 / FILTER_UPDATE_FPS;
 
 export function Component({
     sizing = 'fill',
@@ -64,51 +63,46 @@ export function Component({
 }: ShadowOverlayProps) {
     const id = useInstanceId();
 
-    // All hooks must run unconditionally before any early return.
     const [isMobile, setIsMobile] = React.useState(false);
     const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
-    const hueRotateMotionValue = useMotionValue(180);
-    const hueRotateAnimation = useRef<AnimationPlaybackControls | null>(null);
 
     useEffect(() => {
         setIsMobile(window.matchMedia("(pointer: coarse)").matches);
     }, []);
 
-    // animationEnabled is false on mobile so the framer-motion loop never starts
     const animationEnabled = !isMobile && !!(animation && animation.scale > 0);
     const displacementScale = animation ? mapRange(animation.scale, 1, 100, 20, 100) : 0;
     const animationDuration = animation ? mapRange(animation.speed, 1, 100, 1000, 50) : 1;
 
     useEffect(() => {
-        if (feColorMatrixRef.current && animationEnabled) {
-            if (hueRotateAnimation.current) {
-                hueRotateAnimation.current.stop();
-            }
-            hueRotateMotionValue.set(0);
-            hueRotateAnimation.current = animate(hueRotateMotionValue, 360, {
-                duration: animationDuration / 25,
-                repeat: Infinity,
-                repeatType: "loop",
-                repeatDelay: 0,
-                ease: "linear",
-                delay: 0,
-                onUpdate: (value: number) => {
-                    if (feColorMatrixRef.current) {
-                        feColorMatrixRef.current.setAttribute("values", String(value));
-                    }
-                }
-            });
+        if (!animationEnabled || !feColorMatrixRef.current) return;
 
-            return () => {
-                if (hueRotateAnimation.current) {
-                    hueRotateAnimation.current.stop();
-                }
-            };
+        // Full hue rotation cycle in milliseconds
+        const cycleDurationMs = (animationDuration / 25) * 1000;
+
+        let rafId: number;
+        let lastUpdateMs = 0;
+
+        function tick(nowMs: number) {
+            rafId = requestAnimationFrame(tick);
+
+            // Skip this frame if not enough time has passed — this is what
+            // caps the filter recalculation at FILTER_UPDATE_FPS instead of
+            // the display's native refresh rate (60/120/144 Hz).
+            if (nowMs - lastUpdateMs < FILTER_INTERVAL_MS) return;
+            lastUpdateMs = nowMs;
+
+            // Time-based hue so the animation stays in sync with wall-clock
+            // even when frames are skipped.
+            const hue = (nowMs / cycleDurationMs * 360) % 360;
+            feColorMatrixRef.current?.setAttribute("values", String(hue));
         }
-    }, [animationEnabled, animationDuration, hueRotateMotionValue]);
 
-    // Mobile: lightweight CSS-only gradient — no SVG filters, no framer-motion,
-    // fully GPU-composited, looks seamless across all themes.
+        rafId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafId);
+    }, [animationEnabled, animationDuration]);
+
+    // Mobile: lightweight static gradient — no SVG filters, fully GPU-composited.
     if (isMobile) {
         return (
             <div
@@ -140,13 +134,16 @@ export function Component({
                 style={{
                     position: "absolute",
                     inset: -displacementScale,
-                    filter: animationEnabled ? `url(#${id}) blur(4px)` : "none"
+                    filter: animationEnabled ? `url(#${id}) blur(4px)` : "none",
+                    // Promote to its own compositing layer so filter updates
+                    // don't force a repaint of surrounding content.
+                    willChange: animationEnabled ? "filter" : "auto",
                 }}
             >
                 {animationEnabled && (
                     <svg style={{ position: "absolute" }}>
                         <defs>
-                            <filter id={id}>
+                            <filter id={id} colorInterpolationFilters="sRGB">
                                 <feTurbulence
                                     result="undulation"
                                     numOctaves="2"

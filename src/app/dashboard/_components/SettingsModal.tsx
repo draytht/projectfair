@@ -15,13 +15,20 @@ const THEMES: { id: Theme; label: string; bg: string; accent: string }[] = [
   { id: "catppuccin",  label: "Catppuccin", bg: "#1e1e2e", accent: "#cba6f7" },
 ];
 
-const SHORTCUTS = [
-  { keys: ["G", "H"], label: "Go to Home" },
-  { keys: ["G", "B"], label: "Go to Board" },
-  { keys: ["G", "T"], label: "Go to Team" },
-  { keys: ["G", "P"], label: "Go to Profile" },
-  { keys: ["?"],      label: "Show shortcuts" },
-  { keys: ["Esc"],    label: "Close modal / panel" },
+type ShortcutKey = string | { mac: string; other: string };
+interface ShortcutDef {
+  keys: ShortcutKey[];
+  combo?: boolean; // true = hold simultaneously, undefined = sequential
+  label: string;
+}
+
+const SHORTCUTS: ShortcutDef[] = [
+  { keys: [{ mac: "⌘", other: "Ctrl" }, ","], combo: true, label: "Open Settings" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "B"], combo: true, label: "Toggle sidebar" },
+  { keys: ["G", "H"],                                       label: "Go to Dashboard" },
+  { keys: ["G", "P"],                                       label: "Go to Profile" },
+  { keys: ["?"],                                            label: "Show shortcuts" },
+  { keys: ["Esc"],                                          label: "Close modal / panel" },
 ];
 
 type Category = "appearance" | "effects" | "account" | "support";
@@ -233,6 +240,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [copied, setCopied]               = useState(false);
   const [pwOpen, setPwOpen]               = useState(false);
+  const [isMac, setIsMac]                 = useState(false);
+
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
+  }, []);
 
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -449,20 +461,30 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
                     {shortcutsOpen && (
                       <div style={{ borderRadius: 10, border: "1px solid var(--th-border)", overflow: "hidden", marginTop: -4 }}>
-                        {SHORTCUTS.map((s, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                            padding: "9px 14px", borderBottom: i < SHORTCUTS.length - 1 ? "1px solid var(--th-border)" : "none",
-                            background: "var(--th-bg)" }}>
-                            <span style={{ color: "var(--th-text-2)", fontSize: 12 }}>{s.label}</span>
-                            <div style={{ display: "flex", gap: 4 }}>
-                              {s.keys.map((k) => (
-                                <kbd key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 5,
-                                  background: "var(--th-card)", border: "1px solid var(--th-border)",
-                                  color: "var(--th-text)", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>{k}</kbd>
-                              ))}
+                        {SHORTCUTS.map((s, i) => {
+                          const resolvedKeys = s.keys.map((k) =>
+                            typeof k === "string" ? k : (isMac ? k.mac : k.other)
+                          );
+                          return (
+                            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "9px 14px", borderBottom: i < SHORTCUTS.length - 1 ? "1px solid var(--th-border)" : "none",
+                              background: "var(--th-bg)" }}>
+                              <span style={{ color: "var(--th-text-2)", fontSize: 12 }}>{s.label}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                {resolvedKeys.flatMap((k, ki) => [
+                                  ...(ki > 0 ? [
+                                    <span key={`sep-${i}-${ki}`} style={{ color: "var(--th-text-2)", fontSize: 10, userSelect: "none", lineHeight: 1 }}>
+                                      {s.combo ? "+" : "›"}
+                                    </span>
+                                  ] : []),
+                                  <kbd key={`k-${i}-${ki}`} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 5,
+                                    background: "var(--th-card)", border: "1px solid var(--th-border)",
+                                    color: "var(--th-text)", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>{k}</kbd>,
+                                ])}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 

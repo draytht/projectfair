@@ -1,7 +1,51 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// In-memory rate limiter — works for single-instance (Vercel hobby/pro).
+// Upgrade to Upstash Redis for multi-region deployments.
+const rateMap = new Map<string, { count: number; reset: number }>();
+
+function rateLimit(ip: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rateMap.get(ip);
+  if (!entry || now > entry.reset) {
+    rateMap.set(ip, { count: 1, reset: now + windowMs });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count++;
+  return true;
+}
+
 export async function middleware(request: NextRequest) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const pathname = request.nextUrl.pathname;
+
+  // Rate limit auth endpoints: 10 req / min per IP
+  if (pathname.startsWith("/api/auth/")) {
+    if (!rateLimit(ip, 10, 60_000)) {
+      return new NextResponse("Too many requests", { status: 429 });
+    }
+  }
+  // Rate limit all other API routes: 120 req / min per IP
+  else if (pathname.startsWith("/api/")) {
+    if (!rateLimit(ip, 120, 60_000)) {
+      return new NextResponse("Too many requests", { status: 429 });
+    }
+  }
+
+  // Non-dashboard routes don't need a Supabase round-trip —
+  // saves 80-150ms on every public page / API call.
+  const isDashboard = pathname.startsWith("/dashboard");
+  const isAuthPage =
+    pathname === "/login" || pathname === "/signup";
+
+  if (!isDashboard && !isAuthPage) {
+    return NextResponse.next();
+  }
+
+  // Supabase auth check (only for dashboard + auth pages)
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -25,15 +69,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Protect dashboard routes
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+  if (!user && isDashboard) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect logged-in users away from auth pages
-  if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup")) {
+  if (user && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -41,5 +85,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Dashboard + auth pages → need Supabase check
+    "/dashboard/:path*",
+    "/login",
+    "/signup",
+    // All API routes → need rate limiting
+    "/api/:path*",
+  ],
 };

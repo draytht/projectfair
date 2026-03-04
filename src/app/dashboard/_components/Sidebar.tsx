@@ -51,6 +51,11 @@ export function Sidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
+  }, []);
 
   // Restore pinned state from localStorage
   useEffect(() => {
@@ -65,12 +70,16 @@ export function Sidebar({
     });
   }, []);
 
-  // Keyboard shortcut: Ctrl+B / ⌘B
+  // Keyboard shortcuts: Ctrl/⌘+B → toggle sidebar | Ctrl/⌘+, → open settings
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "b") {
         e.preventDefault();
         togglePin();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
       }
     }
     document.addEventListener("keydown", onKey);
@@ -166,7 +175,7 @@ export function Sidebar({
         {/* Pin / collapse toggle ─ always visible at bottom */}
         <button
           onClick={togglePin}
-          title={`${pinned ? "Collapse" : "Pin"} sidebar  Ctrl+B`}
+          title={`${pinned ? "Collapse" : "Pin"} sidebar  ${isMac ? "⌘B" : "Ctrl+B"}`}
           className="nc-sidebar-pin-btn"
         >
           {/* Chevron: points right (→ pin) when collapsed, left (← collapse) when pinned */}
@@ -181,7 +190,7 @@ export function Sidebar({
           <span className="nc-sidebar-reveal" style={{ fontSize: 11 }}>
             {pinned ? "Collapse" : "Pin sidebar"}
           </span>
-          <span className="nc-sidebar-reveal nc-sidebar-kbd">Ctrl+B</span>
+          <span className="nc-sidebar-reveal nc-sidebar-kbd">{isMac ? "⌘B" : "Ctrl+B"}</span>
         </button>
       </div>
 
