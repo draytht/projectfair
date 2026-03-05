@@ -19,7 +19,7 @@ function createPrismaClient() {
 }
 
 const cached = globalForPrisma.prisma;
-const isStale = cached && !("chatMessage" in cached);
+const isStale = cached && (!("chatMessage" in cached) || !("course" in cached));
 
 export const prisma = !cached || isStale ? createPrismaClient() : cached;
 

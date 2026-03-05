@@ -244,6 +244,7 @@ export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean;
   const [soundEnabled, setSoundEnabled]   = useState(true);
   const [cursorGlow, setCursorGlow]       = useState(true);
   const [reduceMotion, setReduceMotion]   = useState(false);
+  const [showThemeToggle, setShowThemeToggle] = useState(true);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [copied, setCopied]               = useState(false);
   const [pwOpen, setPwOpen]               = useState(false);
@@ -259,6 +260,7 @@ export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean;
     setSoundEnabled(localStorage.getItem("nc-sound") !== "false");
     setCursorGlow(localStorage.getItem("nc-cursor-glow") !== "false");
     setReduceMotion(localStorage.getItem("nc-reduce-motion") === "true");
+    setShowThemeToggle(localStorage.getItem("nc-theme-toggle") !== "false");
   }, [open]);
 
   useEffect(() => {
@@ -295,6 +297,11 @@ export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean;
     setReduceMotion(val);
     localStorage.setItem("nc-reduce-motion", String(val));
     window.dispatchEvent(new CustomEvent("nc-settings", { detail: { reduceMotion: val } }));
+  }
+  function toggleThemeToggle(val: boolean) {
+    setShowThemeToggle(val);
+    localStorage.setItem("nc-theme-toggle", String(val));
+    window.dispatchEvent(new CustomEvent("nc-settings", { detail: { themeToggle: val } }));
   }
 
   async function handleShare() {
@@ -403,6 +410,9 @@ export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean;
                 </Row>
                 <Row label="Reduce motion" description="Disable non-essential animations">
                   <Toggle checked={reduceMotion} onChange={toggleReduceMotion} />
+                </Row>
+                <Row label="Theme picker" description="Show the floating theme button at the bottom">
+                  <Toggle checked={showThemeToggle} onChange={toggleThemeToggle} />
                 </Row>
                 <div style={{ paddingTop: 16 }}>
                   <p style={{ color: "var(--th-text-2)", fontSize: 11, lineHeight: 1.5 }}>
