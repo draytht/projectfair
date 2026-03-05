@@ -19,7 +19,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   });
 
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  if (project.ownerId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const userOwnsProject = project.ownerId === user.id;
+
+  // Also allow the owner of the target course to link projects to it
+  let userOwnsCourse = false;
+  if (!userOwnsProject && courseId) {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { ownerId: true },
+    });
+    userOwnsCourse = course?.ownerId === user.id;
+  }
+
+  if (!userOwnsProject && !userOwnsCourse) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const updated = await prisma.project.update({
     where: { id: projectId },
