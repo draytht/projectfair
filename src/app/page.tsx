@@ -1,18 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { CTAButton } from "@/components/CTAButton";
 import { Component as EtherealShadow } from "@/components/ui/etheral-shadow";
 import { AutoScrollingClientCarousel } from "@/components/ui/auto-scrolling-carousel";
 import { FlickeringFooter } from "@/components/ui/flickering-footer";
-
-// 3D folder stack — loaded client-side only, zero SSR cost
-const FolderStack = dynamic(
-  () => import("@/components/FolderStack").then((m) => ({ default: m.FolderStack })),
-  { ssr: false, loading: () => null }
-);
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -282,7 +275,7 @@ function ProblemCard({
           }}
         />
         {/* Number + animated illustration inline */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
           <span
             style={{
               fontFamily: "var(--font-display)",
@@ -293,7 +286,7 @@ function ProblemCard({
           >
             {n}
           </span>
-          <div style={{ flexShrink: 0 }}>{visual}</div>
+          <div style={{ flexShrink: 0, marginLeft: "auto", paddingRight: 4 }}>{visual}</div>
         </div>
         <h3 style={{ color: "var(--th-text)", fontWeight: 600, fontSize: "0.9375rem", marginBottom: 8, lineHeight: 1.4 }}>
           {title}
@@ -490,7 +483,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="nc-hero-grid px-6 md:px-10 pt-16 md:pt-20 pb-16 max-w-5xl mx-auto">
+      <section className="px-6 md:px-10 pt-16 md:pt-20 pb-16 max-w-5xl mx-auto">
         {/* Left: text */}
         <div className="flex flex-col justify-center" style={{ alignItems: "flex-start" }}>
           <Reveal>
@@ -578,10 +571,6 @@ export default function LandingPage() {
           </Reveal>
         </div>
 
-        {/* Right: 3D folder stack */}
-        <div className="nc-hero-scene-wrap">
-          <FolderStack />
-        </div>
       </section>
 
       {/* ── Divider ───────────────────────────────────────────────────────── */}

@@ -29,6 +29,13 @@ const SHORTCUTS: ShortcutDef[] = [
   { keys: ["G", "P"],                                       label: "Go to Profile" },
   { keys: ["?"],                                            label: "Show shortcuts" },
   { keys: ["Esc"],                                          label: "Close modal / panel" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "1"], combo: true, label: "Project → Board tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "2"], combo: true, label: "Project → History tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "3"], combo: true, label: "Project → Contributions tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "4"], combo: true, label: "Project → Files tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "5"], combo: true, label: "Project → Activity tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "6"], combo: true, label: "Project → Chat tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "↵"], combo: true, label: "Chat → Send message" },
 ];
 
 type Category = "appearance" | "effects" | "account" | "support";
@@ -229,7 +236,7 @@ function BugReportForm({ onBack }: { onBack: () => void }) {
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
-export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean; onClose: () => void; openShortcuts?: boolean }) {
   const { theme, setTheme } = useTheme();
   const [cat, setCat] = useState<Category>("appearance");
   const [supportView, setSupportView] = useState<SupportView>("menu");
@@ -259,6 +266,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     if (open) document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (open && openShortcuts) {
+      setCat("support");
+      setShortcutsOpen(true);
+    }
+  }, [open, openShortcuts]);
 
   // Reset support sub-view when switching categories
   function goToCategory(id: Category) {

@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Data fetching
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -13,321 +17,476 @@ export default async function DashboardPage() {
   if (!dbUser) redirect("/login");
 
   const displayName = dbUser.preferredName || dbUser.name;
+  const role = dbUser.role;
 
-  // ── Student dashboard data ────────────────────────────────────────────────
-  if (dbUser.role === "STUDENT" || dbUser.role === "TEAM_LEADER") {
+  // Courses (all roles)
+  const courses = await prisma.course.findMany({
+    where: { ownerId: user.id },
+    orderBy: { createdAt: "asc" },
+    include: { projects: { select: { id: true } } },
+  });
+
+  // ── Student / Team Leader ──────────────────────────────────────────────────
+  if (role === "STUDENT" || role === "TEAM_LEADER") {
     const memberships = await prisma.projectMember.findMany({
       where: { userId: user.id },
-      include: {
-        project: {
-          include: { tasks: true, members: true },
-        },
-      },
+      include: { project: { include: { tasks: true, members: true } } },
       orderBy: { joinedAt: "desc" },
     });
-
     const projects = memberships.map((m) => m.project);
 
-    const assignedTasks = await prisma.task.findMany({
-      where: { assigneeId: user.id, status: { not: "DONE" } },
-      include: { project: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-    });
+    const [assignedTasks, totalTasks, doneTasks, overdueTasks] = await Promise.all([
+      prisma.task.findMany({
+        where: { assigneeId: user.id, status: { not: "DONE" } },
+        include: { project: { select: { id: true, name: true } } },
+        orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+        take: 8,
+      }),
+      prisma.task.count({ where: { assigneeId: user.id } }),
+      prisma.task.count({ where: { assigneeId: user.id, status: "DONE" } }),
+      prisma.task.count({
+        where: { assigneeId: user.id, status: { not: "DONE" }, dueDate: { lt: new Date() } },
+      }),
+    ]);
 
-    const totalTasks = await prisma.task.count({ where: { assigneeId: user.id } });
-    const doneTasks = await prisma.task.count({ where: { assigneeId: user.id, status: "DONE" } });
-    const overdueTasks = await prisma.task.count({
-      where: {
-        assigneeId: user.id,
-        status: { not: "DONE" },
-        dueDate: { lt: new Date() },
-      },
-    });
-
-    const recentProjects = projects.slice(0, 5);
-
-    const stats = [
-      { label: "Projects", value: projects.length },
-      { label: "Assigned", value: totalTasks },
-      { label: "Completed", value: doneTasks },
-      { label: "Overdue", value: overdueTasks, warn: overdueTasks > 0 },
-    ];
-
-    return <StudentDashboard
-      name={displayName}
-      role={dbUser.role}
-      stats={stats}
-      assignedTasks={assignedTasks}
-      recentProjects={recentProjects}
-    />;
+    return (
+      <Dashboard
+        name={displayName}
+        role={role}
+        courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, projectCount: c.projects.length }))}
+        stats={[
+          { label: "Projects", value: projects.length, href: "/dashboard/projects" },
+          { label: "Courses", value: courses.length, href: "/dashboard/courses" },
+          { label: "Tasks Done", value: doneTasks },
+          { label: "Overdue", value: overdueTasks, warn: overdueTasks > 0 },
+        ]}
+        totalTasks={totalTasks}
+        doneTasks={doneTasks}
+        assignedTasks={assignedTasks.map((t) => ({
+          id: t.id, title: t.title, status: t.status,
+          dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+          project: t.project,
+        }))}
+        recentProjects={projects.slice(0, 5).map((p) => ({
+          id: p.id, name: p.name, courseCode: p.courseCode,
+          total: p.tasks.length,
+          done: p.tasks.filter((t) => t.status === "DONE").length,
+          members: p.members.length,
+          href: `/dashboard/projects/${p.id}`,
+        }))}
+      />
+    );
   }
 
-  // ── Professor dashboard data ───────────────────────────────────────────────
-  if (dbUser.role === "PROFESSOR") {
+  // ── Professor ──────────────────────────────────────────────────────────────
+  if (role === "PROFESSOR") {
     const memberships = await prisma.projectMember.findMany({
       where: { userId: user.id },
-      include: {
-        project: { include: { tasks: true, members: { include: { user: true } } } },
-      },
+      include: { project: { include: { tasks: true, members: { include: { user: true } } } } },
     });
-
     const projects = memberships.map((m) => m.project);
     const totalStudents = new Set(
-      projects.flatMap((p) => p.members.map((m) => m.userId))
+      projects.flatMap((p) => p.members.filter((m) => m.user.role === "STUDENT").map((m) => m.userId))
     ).size;
-
     const totalTasks = projects.reduce((s, p) => s + p.tasks.length, 0);
     const doneTasks = projects.reduce((s, p) => s + p.tasks.filter((t) => t.status === "DONE").length, 0);
     const avgCompletion = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
 
-    const overdueCounts = projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      courseCode: p.courseCode,
-      overdue: p.tasks.filter(
-        (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "DONE"
-      ).length,
+    const projOverviews = projects.map((p) => ({
+      id: p.id, name: p.name, courseCode: p.courseCode,
+      overdue: p.tasks.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "DONE").length,
       total: p.tasks.length,
       done: p.tasks.filter((t) => t.status === "DONE").length,
-      members: p.members.length,
+      members: p.members.filter((m) => m.user.role === "STUDENT").length,
+      href: `/dashboard/monitor/${p.id}`,
     }));
+    const flagged = projOverviews.filter((p) => p.overdue > 0);
 
-    const flagged = overdueCounts.filter((p) => p.overdue > 0);
-    const recentProjects = overdueCounts.slice(0, 6);
-
-    const stats = [
-      { label: "Projects", value: projects.length },
-      { label: "Students", value: totalStudents },
-      { label: "Avg. Done", value: `${avgCompletion}%` },
-      { label: "Overdue", value: flagged.length, warn: flagged.length > 0 },
-    ];
-
-    return <ProfessorDashboard
-      name={displayName}
-      stats={stats}
-      flagged={flagged}
-      recentProjects={recentProjects}
-    />;
+    return (
+      <Dashboard
+        name={displayName}
+        role={role}
+        courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, projectCount: c.projects.length }))}
+        stats={[
+          { label: "Projects", value: projects.length, href: "/dashboard/projects" },
+          { label: "Courses", value: courses.length, href: "/dashboard/courses" },
+          { label: "Students", value: totalStudents },
+          { label: "Avg. Done", value: `${avgCompletion}%` },
+        ]}
+        totalTasks={totalTasks}
+        doneTasks={doneTasks}
+        flagged={flagged}
+        recentProjects={projOverviews.slice(0, 5)}
+        assignedTasks={[]}
+      />
+    );
   }
 
   return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Student dashboard
+// Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type StatItem = { label: string; value: number | string; warn?: boolean };
+type StatItem = { label: string; value: number | string; warn?: boolean; href?: string };
 
-type AssignedTask = {
-  id: string;
-  title: string;
-  status: string;
-  dueDate: Date | null;
+type CourseSummary = { id: string; name: string; code: string; projectCount: number };
+
+type TaskItem = {
+  id: string; title: string; status: string;
+  dueDate: string | null;
   project: { id: string; name: string };
 };
 
-type ProjectSummary = {
-  id: string;
-  name: string;
-  courseCode: string | null;
-  tasks: { status: string; dueDate: Date | null }[];
-  members: unknown[];
+type ProjectItem = {
+  id: string; name: string; courseCode: string | null;
+  total: number; done: number; members: number; href: string;
+  overdue?: number;
 };
 
-function StudentDashboard({
-  name,
-  role,
-  stats,
-  assignedTasks,
-  recentProjects,
+// ─────────────────────────────────────────────────────────────────────────────
+// Unified Dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Dashboard({
+  name, role, courses, stats, totalTasks, doneTasks,
+  assignedTasks = [], recentProjects = [], flagged = [],
 }: {
   name: string;
   role: string;
+  courses: CourseSummary[];
   stats: StatItem[];
-  assignedTasks: AssignedTask[];
-  recentProjects: ProjectSummary[];
+  totalTasks: number;
+  doneTasks: number;
+  assignedTasks?: TaskItem[];
+  recentProjects?: ProjectItem[];
+  flagged?: ProjectItem[];
 }) {
+  const isProfessor = role === "PROFESSOR";
+  const completionPct = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
+  const roleLabel = role === "TEAM_LEADER" ? "Team Leader" : role.charAt(0) + role.slice(1).toLowerCase();
+
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* Hero */}
+    <div style={{ maxWidth: 1024, margin: "0 auto" }}>
+
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div
-        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-        className="nc-hero-shine-wrap nc-u-in rounded-2xl px-5 py-6 md:px-8 md:py-7 flex items-center justify-between"
+        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 20, padding: "28px 28px 24px", marginBottom: 24, position: "relative", overflow: "hidden" }}
+        className="nc-hero-shine-wrap nc-u-in"
       >
-        <div>
-          <p className="nc-label mb-2">Welcome back</p>
-          <h1 className="nc-page-title">{name}</h1>
-          <span
-            style={{ background: "color-mix(in srgb, var(--th-accent) 15%, transparent)", color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-accent) 30%, transparent)" }}
-            className="inline-block text-xs font-semibold px-3 py-1 rounded-full mt-3 capitalize"
-          >
-            {role.toLowerCase().replace("_", " ")}
-          </span>
-        </div>
-        <div className="hidden md:flex gap-3">
-          <Link
-            href="/dashboard/projects"
-            style={{ border: "1px solid var(--th-border)", color: "var(--th-text-2)" }}
-            className="text-sm px-4 py-2 rounded-lg hover:opacity-70 transition"
-          >
-            My Projects
-          </Link>
-          <Link
-            href="/dashboard/projects/new"
-            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-            className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition"
-          >
-            + New Project
-          </Link>
-        </div>
-      </div>
+        {/* Subtle radial glow */}
+        <div style={{ position: "absolute", top: -60, right: -60, width: 220, height: 220, background: "radial-gradient(circle, color-mix(in srgb, var(--th-accent) 8%, transparent), transparent 70%)", pointerEvents: "none" }} />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
-          <div
-            key={s.label}
-            style={{
-              background: "var(--th-card)",
-              border: `1px solid ${s.warn ? "#ef444455" : "var(--th-border)"}`,
-              animationDelay: `${0.06 + i * 0.07}s`,
-            }}
-            className={`nc-u-in nc-card-lift rounded-xl p-5 text-center ${s.warn ? "nc-warn-card" : ""}`}
-          >
-            <p
-              style={{ color: s.warn ? "#ef4444" : "var(--th-accent)", animationDelay: `${0.12 + i * 0.07}s` }}
-              className="nc-stat-num text-4xl font-black leading-none"
-            >
-              {typeof s.value === "number"
-                ? <AnimatedCounter to={s.value} />
-                : s.value}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <div>
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+              Welcome back
             </p>
-            <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-2">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Two-column */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Active tasks */}
-        <div
-          style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", animationDelay: "0.18s" }}
-          className="nc-u-in rounded-xl p-5"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="nc-section-title">Your Active Tasks</h2>
-            <span style={{ color: "var(--th-text-2)" }} className="text-xs">{assignedTasks.length} remaining</span>
-          </div>
-
-          {assignedTasks.length === 0 ? (
-            <div className="text-center py-10">
-              <p style={{ color: "var(--th-accent)" }} className="text-2xl mb-2">✓</p>
-              <p style={{ color: "var(--th-text-2)" }} className="text-sm">All caught up!</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {assignedTasks.slice(0, 6).map((task, i) => {
-                const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
-                return (
-                  <Link
-                    key={task.id}
-                    href={`/dashboard/projects/${task.project.id}`}
-                    style={{
-                      background: "var(--th-bg)",
-                      border: `1px solid ${isOverdue ? "rgba(239,68,68,0.25)" : "var(--th-border)"}`,
-                      animationDelay: `${0.22 + i * 0.05}s`,
-                    }}
-                    className="nc-u-in nc-row-slide flex items-start justify-between gap-3 rounded-lg px-3 py-2.5 transition block"
-                  >
-                    <div className="min-w-0">
-                      <p style={{ color: "var(--th-text)" }} className="text-sm font-medium truncate">{task.title}</p>
-                      <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-0.5 truncate">{task.project.name}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span
-                        style={{
-                          background: task.status === "IN_PROGRESS"
-                            ? "color-mix(in srgb, var(--th-accent) 15%, transparent)"
-                            : "var(--th-bg)",
-                          color: task.status === "IN_PROGRESS" ? "var(--th-accent)" : "var(--th-text-2)",
-                          border: "1px solid var(--th-border)",
-                        }}
-                        className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
-                      >
-                        {task.status === "IN_PROGRESS" ? "In Progress" : "To Do"}
-                      </span>
-                      {task.dueDate && (
-                        <span style={{ color: isOverdue ? "#ef4444" : "var(--th-text-2)" }} className="text-xs">
-                          {isOverdue ? "Overdue" : new Date(task.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-              {assignedTasks.length > 6 && (
-                <p style={{ color: "var(--th-text-2)" }} className="text-xs text-center pt-1">
-                  +{assignedTasks.length - 6} more tasks
-                </p>
+            <h1 style={{ color: "var(--th-text)", fontSize: "1.625rem", fontWeight: 800, lineHeight: 1.15, marginBottom: 10 }}>
+              {name}
+            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{
+                background: "color-mix(in srgb, var(--th-accent) 12%, transparent)",
+                color: "var(--th-accent)",
+                border: "1px solid color-mix(in srgb, var(--th-accent) 25%, transparent)",
+                fontSize: "0.6875rem", fontWeight: 700, padding: "3px 10px", borderRadius: 999, letterSpacing: "0.06em",
+              }}>
+                {roleLabel}
+              </span>
+              {totalTasks > 0 && (
+                <span style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }}>
+                  {completionPct}% of tasks complete
+                </span>
               )}
             </div>
+          </div>
+
+          <div className="hidden md:flex" style={{ gap: 8, flexShrink: 0, alignItems: "flex-start" }}>
+            <Link
+              href="/dashboard/courses"
+              className="text-sm px-4 py-2 rounded-lg hover:opacity-70 transition"
+              style={{ border: "1px solid var(--th-border)", color: "var(--th-text-2)", textDecoration: "none" }}
+            >
+              My Courses
+            </Link>
+            <Link
+              href={isProfessor ? "/dashboard/projects" : "/dashboard/projects/new"}
+              className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition"
+              style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", textDecoration: "none" }}
+            >
+              {isProfessor ? "My Projects →" : "+ New Project"}
+            </Link>
+          </div>
+        </div>
+
+        {/* Mini progress bar */}
+        {totalTasks > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div style={{ background: "var(--th-border)", height: 3, borderRadius: 999, overflow: "hidden" }}>
+              <div style={{ background: "var(--th-accent)", width: `${completionPct}%`, height: 3, borderRadius: 999, transition: "width 0.6s" }} />
+            </div>
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", marginTop: 4 }}>
+              {doneTasks} of {totalTasks} tasks done across all projects
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Stats row ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: 12, marginBottom: 24 }}>
+        {stats.map((s, i) => {
+          const inner = (
+            <div
+              style={{
+                background: "var(--th-card)",
+                border: `1px solid ${s.warn ? "color-mix(in srgb, #ef4444 35%, var(--th-border))" : "var(--th-border)"}`,
+                borderRadius: 14, padding: "18px 16px", textAlign: "center",
+                animationDelay: `${0.05 + i * 0.06}s`,
+                transition: "border-color 0.15s, transform 0.15s",
+              }}
+              className={`nc-u-in nc-card-lift ${s.warn ? "nc-warn-card" : ""}`}
+            >
+              <p
+                style={{ color: s.warn ? "#ef4444" : "var(--th-accent)", fontSize: "2.25rem", fontWeight: 800, lineHeight: 1, animationDelay: `${0.1 + i * 0.06}s` }}
+                className="nc-stat-num"
+              >
+                {typeof s.value === "number" ? <AnimatedCounter to={s.value} /> : s.value}
+              </p>
+              <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", marginTop: 6, letterSpacing: "0.04em" }}>
+                {s.label}
+              </p>
+            </div>
+          );
+          return s.href ? (
+            <Link key={s.label} href={s.href} style={{ textDecoration: "none" }}>{inner}</Link>
+          ) : (
+            <div key={s.label}>{inner}</div>
+          );
+        })}
+      </div>
+
+      {/* ── My Courses strip ──────────────────────────────────────────────── */}
+      <div
+        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 16, padding: "20px 20px 18px", marginBottom: 24, animationDelay: "0.15s" }}
+        className="nc-u-in"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <h2 style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            My Courses
+          </h2>
+          <Link href="/dashboard/courses" style={{ color: "var(--th-accent)", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}
+            className="hover:opacity-70 transition">
+            {courses.length > 0 ? "View all →" : "Create one →"}
+          </Link>
+        </div>
+
+        {courses.length === 0 ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.8125rem" }}>No courses yet.</p>
+            <Link
+              href="/dashboard/courses"
+              style={{ color: "var(--th-accent)", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none", border: "1px solid var(--th-border)", padding: "4px 12px", borderRadius: 999 }}
+              className="hover:opacity-70 transition"
+            >
+              + New Course
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+            {courses.map((c) => (
+              <Link
+                key={c.id}
+                href="/dashboard/courses"
+                style={{
+                  background: "var(--th-bg)", border: "1px solid var(--th-border)",
+                  borderRadius: 12, padding: "12px 14px", textDecoration: "none",
+                  flexShrink: 0, minWidth: 140, maxWidth: 180,
+                  transition: "border-color 0.15s, transform 0.15s",
+                  display: "block",
+                }}
+                className="nc-card-hover"
+              >
+                <p style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+                  {c.code}
+                </p>
+                <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 6 }}>
+                  {c.name}
+                </p>
+                <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>
+                  {c.projectCount} project{c.projectCount !== 1 ? "s" : ""}
+                </p>
+              </Link>
+            ))}
+            {/* Add course chip */}
+            <Link
+              href="/dashboard/courses"
+              style={{
+                border: "1.5px dashed var(--th-border)", borderRadius: 12,
+                padding: "12px 14px", textDecoration: "none", flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                minWidth: 100, transition: "border-color 0.15s, color 0.15s",
+                color: "var(--th-text-2)", fontSize: "0.75rem", fontWeight: 600,
+              }}
+              className="hover:opacity-70 transition"
+            >
+              + New
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom grid ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 20 }}>
+
+        {/* Left: Active tasks (student) or Needs Attention (professor) */}
+        <div
+          style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 16, padding: "20px", animationDelay: "0.18s" }}
+          className="nc-u-in"
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <h2 style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              {isProfessor ? "Needs Attention" : "Active Tasks"}
+            </h2>
+            {!isProfessor && (
+              <span style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }}>
+                {assignedTasks.length} remaining
+              </span>
+            )}
+          </div>
+
+          {isProfessor ? (
+            flagged.length === 0 ? (
+              <EmptyState icon="✓" text="All projects on track" />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {flagged.map((p, i) => (
+                  <Link
+                    key={p.id}
+                    href={p.href}
+                    style={{
+                      background: "color-mix(in srgb, #ef4444 6%, var(--th-bg))",
+                      border: "1px solid color-mix(in srgb, #ef4444 20%, var(--th-border))",
+                      borderRadius: 10, padding: "10px 12px", textDecoration: "none",
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                      animationDelay: `${0.22 + i * 0.04}s`,
+                    }}
+                    className="nc-u-in nc-row-slide"
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      {p.courseCode && <p style={{ color: "#ef4444", fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 2 }}>{p.courseCode}</p>}
+                      <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 500 }} className="truncate">{p.name}</p>
+                    </div>
+                    <span style={{ color: "#f87171", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>
+                      {p.overdue} overdue
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )
+          ) : (
+            assignedTasks.length === 0 ? (
+              <EmptyState icon="✓" text="All caught up!" />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {assignedTasks.map((task, i) => {
+                  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+                  return (
+                    <Link
+                      key={task.id}
+                      href={`/dashboard/projects/${task.project.id}`}
+                      style={{
+                        background: "var(--th-bg)",
+                        border: `1px solid ${isOverdue ? "color-mix(in srgb, #ef4444 25%, var(--th-border))" : "var(--th-border)"}`,
+                        borderRadius: 10, padding: "10px 12px", textDecoration: "none",
+                        display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10,
+                        animationDelay: `${0.22 + i * 0.04}s`,
+                      }}
+                      className="nc-u-in nc-row-slide"
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 500 }} className="truncate">{task.title}</p>
+                        <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", marginTop: 2 }} className="truncate">{task.project.name}</p>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
+                        <StatusBadge status={task.status} />
+                        {task.dueDate && (
+                          <span style={{ color: isOverdue ? "#ef4444" : "var(--th-text-2)", fontSize: "0.625rem", whiteSpace: "nowrap" }}>
+                            {isOverdue ? "Overdue" : fmtDate(task.dueDate)}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )
           )}
         </div>
 
-        {/* Recent projects */}
+        {/* Right: Recent projects */}
         <div
-          style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", animationDelay: "0.22s" }}
-          className="nc-u-in rounded-xl p-5"
+          style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 16, padding: "20px", animationDelay: "0.22s" }}
+          className="nc-u-in"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="nc-section-title">Recent Projects</h2>
-            <Link href="/dashboard/projects" style={{ color: "var(--th-accent)" }} className="text-xs hover:opacity-70 transition">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <h2 style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              {isProfessor ? "Project Progress" : "Recent Projects"}
+            </h2>
+            <Link
+              href="/dashboard/projects"
+              style={{ color: "var(--th-accent)", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none" }}
+              className="hover:opacity-70 transition"
+            >
               View all →
             </Link>
           </div>
 
           {recentProjects.length === 0 ? (
-            <div className="text-center py-10">
-              <p style={{ color: "var(--th-text-2)" }} className="text-sm mb-3">No projects yet.</p>
+            <EmptyState text="No projects yet.">
               <Link
-                href="/dashboard/projects/new"
-                style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-                className="text-xs px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition inline-block"
+                href={isProfessor ? "/dashboard/projects" : "/dashboard/projects/new"}
+                style={{ color: "var(--th-accent)", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none", marginTop: 8, display: "inline-block" }}
               >
-                Create your first
+                {isProfessor ? "Create one →" : "+ Create your first"}
               </Link>
-            </div>
+            </EmptyState>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {recentProjects.map((p, i) => {
-                const total = p.tasks.length;
-                const done = p.tasks.filter((t) => t.status === "DONE").length;
-                const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+                const pct = p.total === 0 ? 0 : Math.round((p.done / p.total) * 100);
                 return (
                   <Link
                     key={p.id}
-                    href={`/dashboard/projects/${p.id}`}
+                    href={p.href}
                     style={{
-                      background: "var(--th-bg)",
-                      border: "1px solid var(--th-border)",
-                      animationDelay: `${0.26 + i * 0.06}s`,
+                      background: "var(--th-bg)", border: "1px solid var(--th-border)",
+                      borderRadius: 10, padding: "10px 12px", textDecoration: "none",
+                      display: "block", animationDelay: `${0.26 + i * 0.05}s`,
+                      transition: "border-color 0.15s, transform 0.15s",
                     }}
-                    className="nc-u-in nc-card-lift block rounded-lg px-3 py-3 transition"
+                    className="nc-u-in nc-card-lift"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="min-w-0">
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ minWidth: 0 }}>
                         {p.courseCode && (
-                          <p style={{ color: "var(--th-accent)" }} className="text-xs font-medium uppercase tracking-widest leading-none mb-1">{p.courseCode}</p>
+                          <p style={{ color: "var(--th-accent)", fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 2 }}>
+                            {p.courseCode}
+                          </p>
                         )}
-                        <p style={{ color: "var(--th-text)" }} className="text-sm font-medium truncate">{p.name}</p>
+                        <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 600 }} className="truncate">{p.name}</p>
                       </div>
-                      <span style={{ color: "var(--th-accent)" }} className="text-sm font-bold shrink-0 ml-3">{pct}%</span>
+                      <span style={{ color: "var(--th-accent)", fontSize: "0.875rem", fontWeight: 800, flexShrink: 0, marginLeft: 8 }}>
+                        {pct}%
+                      </span>
                     </div>
-                    <div style={{ background: "var(--th-border)" }} className="w-full h-1.5 rounded-full overflow-hidden">
-                      <div style={{ background: "var(--th-accent)", width: `${pct}%` }} className="nc-bar-anim h-1.5 rounded-full" />
+                    <div style={{ background: "var(--th-border)", height: 3, borderRadius: 999, overflow: "hidden" }}>
+                      <div style={{ background: "var(--th-accent)", width: `${pct}%`, height: 3, borderRadius: 999 }} className="nc-bar-anim" />
                     </div>
-                    <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1.5">{done}/{total} tasks · {p.members.length} members</p>
+                    <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", marginTop: 5 }}>
+                      {p.done}/{p.total} tasks · {p.members} {isProfessor ? "student" : "member"}{p.members !== 1 ? "s" : ""}
+                    </p>
                   </Link>
                 );
               })}
@@ -340,170 +499,33 @@ function StudentDashboard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Professor dashboard
+// Small helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-type ProjOverview = {
-  id: string;
-  name: string;
-  courseCode: string | null;
-  overdue: number;
-  total: number;
-  done: number;
-  members: number;
-};
-
-function ProfessorDashboard({
-  name,
-  stats,
-  flagged,
-  recentProjects,
-}: {
-  name: string;
-  stats: StatItem[];
-  flagged: ProjOverview[];
-  recentProjects: ProjOverview[];
-}) {
+function EmptyState({ icon, text, children }: { icon?: string; text: string; children?: React.ReactNode }) {
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* Hero */}
-      <div
-        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-        className="nc-hero-shine-wrap nc-u-in rounded-2xl px-5 py-6 md:px-8 md:py-7 flex items-center justify-between"
-      >
-        <div>
-          <p className="nc-label mb-2">Welcome back</p>
-          <h1 className="nc-page-title">{name}</h1>
-          <span
-            style={{ background: "color-mix(in srgb, var(--th-accent) 15%, transparent)", color: "var(--th-accent)", border: "1px solid color-mix(in srgb, var(--th-accent) 30%, transparent)" }}
-            className="inline-block text-xs font-semibold px-3 py-1 rounded-full mt-3"
-          >
-            Professor
-          </span>
-        </div>
-        <Link
-          href="/dashboard/courses"
-          style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-          className="nc-btn-3d hidden md:block text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition"
-        >
-          My Courses →
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
-          <div
-            key={s.label}
-            style={{
-              background: "var(--th-card)",
-              border: `1px solid ${s.warn ? "#ef444455" : "var(--th-border)"}`,
-              animationDelay: `${0.06 + i * 0.07}s`,
-            }}
-            className={`nc-u-in nc-card-lift rounded-xl p-5 text-center ${s.warn ? "nc-warn-card" : ""}`}
-          >
-            <p
-              style={{ color: s.warn ? "#ef4444" : "var(--th-accent)", animationDelay: `${0.12 + i * 0.07}s` }}
-              className="nc-stat-num text-4xl font-black leading-none"
-            >
-              {typeof s.value === "number"
-                ? <AnimatedCounter to={s.value} />
-                : s.value}
-            </p>
-            <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-2">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Two-column */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Flagged projects */}
-        <div
-          style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", animationDelay: "0.18s" }}
-          className="nc-u-in rounded-xl p-5"
-        >
-          <h2 className="nc-section-title mb-4">
-            Needs Attention
-          </h2>
-          {flagged.length === 0 ? (
-            <div className="text-center py-10">
-              <p style={{ color: "var(--th-accent)" }} className="text-2xl mb-2">✓</p>
-              <p style={{ color: "var(--th-text-2)" }} className="text-sm">All projects on track</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {flagged.map((p, i) => (
-                <Link
-                  key={p.id}
-                  href={`/dashboard/monitor/${p.id}`}
-                  className="nc-warn-card nc-row-slide flex items-center justify-between rounded-lg px-3 py-2.5 transition block"
-                  style={{
-                    background: "rgba(239,68,68,0.08)",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                    animationDelay: `${0.22 + i * 0.05}s`,
-                  }}
-                >
-                  <div className="min-w-0">
-                    {p.courseCode && <p style={{ color: "#ef4444" }} className="text-xs font-medium uppercase tracking-widest leading-none mb-0.5">{p.courseCode}</p>}
-                    <p style={{ color: "var(--th-text)" }} className="text-sm font-medium truncate">{p.name}</p>
-                  </div>
-                  <span className="text-xs text-red-400 font-semibold shrink-0 ml-3 whitespace-nowrap">
-                    {p.overdue} overdue
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* All projects progress */}
-        <div
-          style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", animationDelay: "0.22s" }}
-          className="nc-u-in rounded-xl p-5"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="nc-section-title">Project Progress</h2>
-            <Link href="/dashboard/courses" style={{ color: "var(--th-accent)" }} className="text-xs hover:opacity-70 transition">
-              View all →
-            </Link>
-          </div>
-          {recentProjects.length === 0 ? (
-            <p style={{ color: "var(--th-text-2)" }} className="text-sm text-center py-10">No projects yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {recentProjects.map((p, i) => {
-                const pct = p.total === 0 ? 0 : Math.round((p.done / p.total) * 100);
-                return (
-                  <Link
-                    key={p.id}
-                    href={`/dashboard/monitor/${p.id}`}
-                    style={{
-                      background: "var(--th-bg)",
-                      border: "1px solid var(--th-border)",
-                      animationDelay: `${0.26 + i * 0.06}s`,
-                    }}
-                    className="nc-u-in nc-card-lift block rounded-lg px-3 py-3 transition"
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="min-w-0">
-                        {p.courseCode && (
-                          <p style={{ color: "var(--th-accent)" }} className="text-xs font-medium uppercase tracking-widest leading-none mb-0.5">{p.courseCode}</p>
-                        )}
-                        <p style={{ color: "var(--th-text)" }} className="text-sm font-medium truncate">{p.name}</p>
-                      </div>
-                      <span style={{ color: "var(--th-accent)" }} className="text-sm font-bold shrink-0 ml-3">{pct}%</span>
-                    </div>
-                    <div style={{ background: "var(--th-border)" }} className="w-full h-1.5 rounded-full overflow-hidden">
-                      <div style={{ background: "var(--th-accent)", width: `${pct}%` }} className="nc-bar-anim h-1.5 rounded-full" />
-                    </div>
-                    <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1.5">{p.done}/{p.total} tasks · {p.members} members</p>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+    <div style={{ textAlign: "center", padding: "32px 16px" }}>
+      {icon && <p style={{ color: "var(--th-accent)", fontSize: "1.5rem", marginBottom: 8 }}>{icon}</p>}
+      <p style={{ color: "var(--th-text-2)", fontSize: "0.8125rem" }}>{text}</p>
+      {children}
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const active = status === "IN_PROGRESS";
+  return (
+    <span style={{
+      background: active ? "color-mix(in srgb, var(--th-accent) 12%, transparent)" : "var(--th-bg)",
+      color: active ? "var(--th-accent)" : "var(--th-text-2)",
+      border: "1px solid var(--th-border)",
+      fontSize: "0.625rem", fontWeight: 600, padding: "2px 6px", borderRadius: 999, whiteSpace: "nowrap",
+    }}>
+      {active ? "In Progress" : "To Do"}
+    </span>
+  );
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

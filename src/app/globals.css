@@ -431,6 +431,57 @@ button, a, [role="button"] { touch-action: manipulation; }
 }
 .nc-select:focus { border-color: var(--th-accent); }
 
+/* ── Page-level action buttons (header New Course / New Project) ──────── */
+.nc-page-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--th-accent);
+  color: var(--th-accent-fg);
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.22), 0 2px 12px rgba(0,0,0,0.14);
+  transition: transform 0.12s cubic-bezier(0.16,1,0.3,1), box-shadow 0.12s ease, opacity 0.15s;
+}
+.nc-page-action-btn:hover { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 7px 0 rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.16); }
+.nc-page-action-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08); opacity: 1; }
+.nc-page-action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.nc-page-action-btn-icon {
+  width: 18px;
+  height: 18px;
+  background: rgba(255,255,255,0.20);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nc-page-action-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--th-accent);
+  border: 1.5px solid color-mix(in srgb, var(--th-accent) 35%, transparent);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nc-page-action-btn-ghost:hover { background: color-mix(in srgb, var(--th-accent) 10%, transparent); border-color: color-mix(in srgb, var(--th-accent) 55%, transparent); }
+.nc-page-action-btn-ghost:active { background: color-mix(in srgb, var(--th-accent) 16%, transparent); }
+
 .nc-btn-primary {
   background: var(--th-accent);
   color: var(--th-accent-fg);
@@ -538,35 +589,6 @@ button, a, [role="button"] { touch-action: manipulation; }
 }
 
 /* ── Landing page layout ───────────────────────────────────────── */
-
-/* Hero: text left / 3D right on desktop, stacked on mobile */
-.nc-hero-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 32px;
-  align-items: center;
-}
-@media (min-width: 768px) {
-  .nc-hero-grid {
-    grid-template-columns: 1fr 1.08fr;
-    gap: 56px;
-  }
-}
-
-/* 3D scene wrapper */
-.nc-hero-scene-wrap {
-  position: relative;
-  width: 100%;
-  height: 360px;
-  overflow: hidden;
-  order: -1; /* scene above text on mobile */
-}
-@media (min-width: 768px) {
-  .nc-hero-scene-wrap {
-    order: 0;
-    height: 500px;
-  }
-}
 
 /* Hero headline — display font (Instrument Serif) */
 .nc-hero-heading {

@@ -2,12 +2,22 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import ProfessorProjectsView from "./_components/ProfessorProjectsView";
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser) redirect("/login");
+
+  // Professor gets their own dedicated view
+  if (dbUser.role === "PROFESSOR") {
+    return <ProfessorProjectsView />;
+  }
+
+  // Student / Team Leader view
   const memberships = await prisma.projectMember.findMany({
     where: { userId: user.id },
     include: { project: true },
@@ -28,8 +38,8 @@ export default async function ProjectsPage() {
         </div>
         <Link
           href="/dashboard/projects/new"
-          style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-          className="text-sm px-4 py-2 rounded-md font-medium hover:opacity-80 transition active:scale-95"
+          className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95"
+          style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", textDecoration: "none", flexShrink: 0 }}
         >
           + New Project
         </Link>

@@ -91,9 +91,8 @@ export function NavLinks({ role }: { role: string }) {
     <>
       {navLink("/dashboard",         "Dashboard",  <IconDashboard />)}
       {navLink("/dashboard/profile", "Profile",    <IconProfile />)}
-      {role === "STUDENT"     && navLink("/dashboard/projects", "My Projects", <IconProjects />)}
-      {role === "PROFESSOR"   && navLink("/dashboard/courses",  "My Courses",  <IconCourses />)}
-      {role === "TEAM_LEADER" && navLink("/dashboard/projects", "My Projects", <IconProjects />)}
+      {navLink("/dashboard/courses", "My Courses", <IconCourses />)}
+      {navLink("/dashboard/projects", "My Projects", <IconProjects />)}
     </>
   );
 }
@@ -124,9 +123,8 @@ export function MobileNavLinks({ role }: { role: string }) {
 
   return (
     <>
-      {role === "STUDENT"     && mobileLink("/dashboard/projects", "Projects")}
-      {role === "PROFESSOR"   && mobileLink("/dashboard/courses",  "Courses")}
-      {role === "TEAM_LEADER" && mobileLink("/dashboard/projects", "Projects")}
+      {mobileLink("/dashboard/courses", "Courses")}
+      {mobileLink("/dashboard/projects", "Projects")}
       {mobileLink("/dashboard/profile", "Profile")}
     </>
   );

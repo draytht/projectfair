@@ -171,6 +171,24 @@ export default function ProjectPage() {
       });
   }, [id]);
 
+  // ⌘/Ctrl + 1-6 → switch tabs
+  useEffect(() => {
+    const TAB_KEYS: Tab[] = ["board", "history", "contributions", "files", "activity", "chat"];
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= 6) {
+        const el = document.activeElement;
+        const inInput = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+        if (inInput) return;
+        e.preventDefault();
+        setTab(TAB_KEYS[n - 1]);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   async function moveTask(task: Task) {
     if (!project) return;
     const newStatus = NEXT_STATUS[task.status];

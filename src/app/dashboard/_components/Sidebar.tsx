@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { NavLinks } from "./NavLinks";
 import { SettingsModal } from "./SettingsModal";
 import { HomePanel } from "./HomePanel";
@@ -49,9 +50,12 @@ export function Sidebar({
   avatarUrl: string | null;
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openShortcuts, setOpenShortcuts] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [isMac, setIsMac] = useState(false);
+  const seqRef = useRef<{ key: string; time: number } | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
@@ -70,21 +74,53 @@ export function Sidebar({
     });
   }, []);
 
-  // Keyboard shortcuts: Ctrl/⌘+B → toggle sidebar | Ctrl/⌘+, → open settings
+  // Keyboard shortcuts
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
-        e.preventDefault();
-        togglePin();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
-        e.preventDefault();
-        setSettingsOpen(true);
-      }
+    function isInputFocused() {
+      const el = document.activeElement;
+      return el instanceof HTMLInputElement
+        || el instanceof HTMLTextAreaElement
+        || el instanceof HTMLSelectElement
+        || (el as HTMLElement)?.isContentEditable;
     }
+
+    function onKey(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey;
+
+      // ⌘/Ctrl combos — always fire regardless of focus
+      if (mod && e.key === "b") { e.preventDefault(); togglePin(); return; }
+      if (mod && e.key === ",") { e.preventDefault(); setOpenShortcuts(false); setSettingsOpen(true); return; }
+
+      // Sequential and single-key shortcuts — skip when typing in an input
+      if (isInputFocused()) return;
+
+      const now = Date.now();
+      const seq = seqRef.current;
+
+      if (e.key === "?" || e.key === "/") {
+        e.preventDefault();
+        setOpenShortcuts(true);
+        setSettingsOpen(true);
+        seqRef.current = null;
+        return;
+      }
+
+      // G → H  (Dashboard)  |  G → P  (Profile)
+      if ((e.key === "g" || e.key === "G") && !mod) {
+        seqRef.current = { key: "g", time: now };
+        return;
+      }
+      if (seq?.key === "g" && now - seq.time < 1000) {
+        if (e.key === "h" || e.key === "H") { e.preventDefault(); router.push("/dashboard"); seqRef.current = null; return; }
+        if (e.key === "p" || e.key === "P") { e.preventDefault(); router.push("/dashboard/profile"); seqRef.current = null; return; }
+      }
+
+      seqRef.current = null;
+    }
+
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [togglePin]);
+  }, [togglePin, router]);
 
   return (
     <aside
@@ -169,7 +205,7 @@ export function Sidebar({
               </svg>
             </button>
           </div>
-          <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+          <SettingsModal open={settingsOpen} onClose={() => { setSettingsOpen(false); setOpenShortcuts(false); }} openShortcuts={openShortcuts} />
         </div>
 
         {/* Pin / collapse toggle ─ always visible at bottom */}

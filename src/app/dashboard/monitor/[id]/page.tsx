@@ -79,32 +79,32 @@ export default function MonitorPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div>
           <h2 className="nc-page-title">
             {summary.project.name}
           </h2>
           {summary.project.courseCode && (
-            <p style={{ color: "var(--th-accent)" }} className="text-xs font-medium uppercase tracking-widest mt-1">
+            <p style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
               {summary.project.courseCode}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/dashboard/projects/${id}`}
-            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-            className="text-sm px-3 py-1.5 rounded-md font-medium hover:opacity-80 transition"
-          >
-            Project Board
-          </Link>
+        <div className="flex items-center gap-3" style={{ flexShrink: 0 }}>
           <button
             onClick={() => router.back()}
-            style={{ color: "var(--th-text-2)" }}
-            className="text-sm hover:opacity-70 transition cursor-pointer"
+            className="text-sm px-4 py-2 rounded-lg hover:opacity-70 transition cursor-pointer"
+            style={{ border: "1px solid var(--th-border)", color: "var(--th-text-2)", background: "none" }}
           >
             ← Back
           </button>
+          <Link
+            href={`/dashboard/projects/${id}`}
+            className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition"
+            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", textDecoration: "none" }}
+          >
+            Project Board
+          </Link>
         </div>
       </div>
 
@@ -118,13 +118,12 @@ export default function MonitorPage() {
         ].map((stat) => (
           <div
             key={stat.label}
-            style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-            className="rounded-xl p-4 text-center"
+            style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 14, padding: "18px 16px", textAlign: "center" }}
           >
-            <p style={{ color: "var(--th-accent)" }} className="text-4xl font-black leading-none">
+            <p style={{ color: "var(--th-accent)", fontSize: "2rem", fontWeight: 800, lineHeight: 1 }}>
               {stat.value}
             </p>
-            <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-2">
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", marginTop: 6, letterSpacing: "0.04em" }}>
               {stat.label}
             </p>
           </div>
@@ -152,12 +151,12 @@ export default function MonitorPage() {
 
       {/* Flags alert */}
       {summary.flags.length > 0 && (
-        <div className="bg-red-950/40 border border-red-800/50 rounded-xl p-4 mb-6">
-          <p className="text-sm font-semibold text-red-400 mb-2">
+        <div style={{ background: "color-mix(in srgb, #ef4444 8%, var(--th-card))", border: "1px solid color-mix(in srgb, #ef4444 30%, var(--th-border))", borderRadius: 14, padding: "14px 16px", marginBottom: 24 }}>
+          <p style={{ color: "#f87171", fontSize: "0.8125rem", fontWeight: 600, marginBottom: 8 }}>
             {summary.flags.length} flag{summary.flags.length > 1 ? "s" : ""} detected
           </p>
           {summary.flags.map((f, i) => (
-            <p key={i} className="text-sm text-red-400">
+            <p key={i} style={{ color: "#f87171", fontSize: "0.8125rem" }}>
               · <strong>{f.name}</strong>: {f.reason}
             </p>
           ))}
@@ -186,7 +185,7 @@ export default function MonitorPage() {
 
       {/* Overview */}
       {tab === "overview" && (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {summary.contributions.map((c, i) => (
             <div
               key={c.userId}
@@ -219,7 +218,7 @@ export default function MonitorPage() {
 
       {/* Contributions */}
       {tab === "contributions" && (
-        <div className="space-y-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {summary.contributions.map((c, i) => (
             <div
               key={c.userId}
@@ -266,10 +265,10 @@ export default function MonitorPage() {
 
       {/* Reviews */}
       {tab === "reviews" && (
-        <div className="space-y-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {Object.keys(summary.reviewSummary).length === 0 ? (
-            <div className="text-center py-24">
-              <p style={{ color: "var(--th-text-2)" }} className="text-sm">No peer reviews yet.</p>
+            <div style={{ textAlign: "center", padding: "96px 24px" }}>
+              <p style={{ color: "var(--th-text-2)", fontSize: "0.875rem" }}>No peer reviews yet.</p>
             </div>
           ) : (
             Object.entries(summary.reviewSummary).map(([userId, r]) => (
@@ -324,11 +323,11 @@ export default function MonitorPage() {
 
       {/* Flags */}
       {tab === "flags" && (
-        <div className="space-y-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {summary.flags.length === 0 ? (
-            <div className="text-center py-24">
-              <p style={{ color: "var(--th-text-2)" }} className="text-sm">No flags detected.</p>
-              <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1">
+            <div style={{ textAlign: "center", padding: "96px 24px" }}>
+              <p style={{ color: "var(--th-text-2)", fontSize: "0.875rem" }}>No flags detected.</p>
+              <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem", marginTop: 4 }}>
                 All team members appear to be contributing fairly.
               </p>
             </div>
@@ -336,10 +335,10 @@ export default function MonitorPage() {
             summary.flags.map((f, i) => (
               <div
                 key={i}
-                className="bg-red-950/40 border border-red-800/50 rounded-xl p-4"
+                style={{ background: "color-mix(in srgb, #ef4444 8%, var(--th-card))", border: "1px solid color-mix(in srgb, #ef4444 30%, var(--th-border))", borderRadius: 14, padding: "14px 16px" }}
               >
-                <p className="font-semibold text-red-400 text-sm">{f.name}</p>
-                <p className="text-sm text-red-400/80 mt-1">{f.reason}</p>
+                <p style={{ color: "#f87171", fontWeight: 600, fontSize: "0.875rem" }}>{f.name}</p>
+                <p style={{ color: "color-mix(in srgb, #f87171 70%, var(--th-text-2))", fontSize: "0.8125rem", marginTop: 4 }}>{f.reason}</p>
               </div>
             ))
           )}

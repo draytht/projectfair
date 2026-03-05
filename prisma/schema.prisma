@@ -37,6 +37,7 @@ model User {
   updatedAt      DateTime @updatedAt
 
   // Relations
+  ownedCourses     Course[]        @relation("CourseOwner")
   ownedProjects    Project[]       @relation("ProjectOwner")
   projectMembers   ProjectMember[]
   assignedTasks    Task[]          @relation("TaskAssignee")
@@ -53,17 +54,34 @@ model User {
   chatReactionPref ChatReactionPreference[]
 }
 
+model Course {
+  id          String   @id @default(uuid())
+  name        String
+  code        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner    User      @relation("CourseOwner", fields: [ownerId], references: [id])
+  projects Project[] @relation("CourseProjects")
+
+  @@unique([code, ownerId])
+}
+
 model Project {
   id          String   @id @default(uuid())
   name        String
   description String?
   courseCode  String?
+  courseId    String?
   ownerId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
   owner    User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  course   Course?         @relation("CourseProjects", fields: [courseId], references: [id], onDelete: SetNull)
   members  ProjectMember[]
   tasks    Task[]
   reviews  PeerReview[]
