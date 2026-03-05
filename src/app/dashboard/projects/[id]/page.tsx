@@ -143,6 +143,7 @@ export default function ProjectPage() {
   const [viewingMember, setViewingMember] = useState<{ member: Member; profile: MemberFullProfile | null; loading: boolean } | null>(null);
   const [boardSwipeIdx, setBoardSwipeIdx] = useState(0);
   const swipeRef = useRef<{ startX: number; startY: number } | null>(null);
+  const [backHovered, setBackHovered] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projects/${id}/contributions`)
@@ -170,6 +171,24 @@ export default function ProjectPage() {
         setLoading(false);
       });
   }, [id]);
+
+  // ⌘/Ctrl + 1-6 → switch tabs
+  useEffect(() => {
+    const TAB_KEYS: Tab[] = ["board", "history", "contributions", "files", "activity", "chat"];
+    function onKey(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= 6) {
+        const el = document.activeElement;
+        const inInput = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+        if (inInput) return;
+        e.preventDefault();
+        setTab(TAB_KEYS[n - 1]);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   async function moveTask(task: Task) {
     if (!project) return;
@@ -355,6 +374,55 @@ export default function ProjectPage() {
 
   return (
     <div>
+      {/* Back button */}
+      <div style={{ marginBottom: 20 }}>
+        <Link
+          href="/dashboard/projects"
+          onMouseEnter={() => setBackHovered(true)}
+          onMouseLeave={() => setBackHovered(false)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            color: backHovered ? "var(--th-accent)" : "var(--th-text-2)",
+            textDecoration: "none",
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.03em",
+            textTransform: "uppercase",
+            padding: "7px 14px 7px 10px",
+            borderRadius: 10,
+            border: `1.5px solid ${backHovered ? "var(--th-accent)" : "var(--th-border)"}`,
+            background: backHovered
+              ? "color-mix(in srgb, var(--th-accent) 8%, var(--th-card))"
+              : "var(--th-card)",
+            transition: "color 0.18s ease, border-color 0.18s ease, background 0.18s ease",
+            userSelect: "none",
+          }}
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 13 13"
+            fill="none"
+            style={{
+              transition: "transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transform: backHovered ? "translateX(-4px)" : "translateX(0)",
+              flexShrink: 0,
+            }}
+          >
+            <path
+              d="M8.5 2L3.5 6.5L8.5 11"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          My Projects
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div>

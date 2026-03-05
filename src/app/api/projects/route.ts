@@ -9,7 +9,18 @@ export async function GET() {
 
   const memberships = await prisma.projectMember.findMany({
     where: { userId: user.id },
-    include: { project: { select: { id: true, name: true, courseCode: true } } },
+    include: {
+      project: {
+        select: {
+          id: true,
+          name: true,
+          courseCode: true,
+          courseId: true,
+          members: { select: { user: { select: { id: true, name: true } } } },
+          tasks: { select: { status: true } },
+        },
+      },
+    },
     orderBy: { joinedAt: "desc" },
   });
 
@@ -22,7 +33,7 @@ export async function POST(req: Request) {
 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, description, courseCode } = await req.json();
+  const { name, description, courseCode, courseId } = await req.json();
 
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
@@ -31,6 +42,7 @@ export async function POST(req: Request) {
       name,
       description,
       courseCode,
+      courseId: courseId || null,
       ownerId: user.id,
       members: {
         create: {

@@ -15,13 +15,27 @@ const THEMES: { id: Theme; label: string; bg: string; accent: string }[] = [
   { id: "catppuccin",  label: "Catppuccin", bg: "#1e1e2e", accent: "#cba6f7" },
 ];
 
-const SHORTCUTS = [
-  { keys: ["G", "H"], label: "Go to Home" },
-  { keys: ["G", "B"], label: "Go to Board" },
-  { keys: ["G", "T"], label: "Go to Team" },
-  { keys: ["G", "P"], label: "Go to Profile" },
-  { keys: ["?"],      label: "Show shortcuts" },
-  { keys: ["Esc"],    label: "Close modal / panel" },
+type ShortcutKey = string | { mac: string; other: string };
+interface ShortcutDef {
+  keys: ShortcutKey[];
+  combo?: boolean; // true = hold simultaneously, undefined = sequential
+  label: string;
+}
+
+const SHORTCUTS: ShortcutDef[] = [
+  { keys: [{ mac: "⌘", other: "Ctrl" }, ","], combo: true, label: "Open Settings" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "B"], combo: true, label: "Toggle sidebar" },
+  { keys: ["G", "H"],                                       label: "Go to Dashboard" },
+  { keys: ["G", "P"],                                       label: "Go to Profile" },
+  { keys: ["?"],                                            label: "Show shortcuts" },
+  { keys: ["Esc"],                                          label: "Close modal / panel" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "1"], combo: true, label: "Project → Board tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "2"], combo: true, label: "Project → History tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "3"], combo: true, label: "Project → Contributions tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "4"], combo: true, label: "Project → Files tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "5"], combo: true, label: "Project → Activity tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "6"], combo: true, label: "Project → Chat tab" },
+  { keys: [{ mac: "⌘", other: "Ctrl" }, "↵"], combo: true, label: "Chat → Send message" },
 ];
 
 type Category = "appearance" | "effects" | "account" | "support";
@@ -222,7 +236,7 @@ function BugReportForm({ onBack }: { onBack: () => void }) {
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
-export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean; onClose: () => void; openShortcuts?: boolean }) {
   const { theme, setTheme } = useTheme();
   const [cat, setCat] = useState<Category>("appearance");
   const [supportView, setSupportView] = useState<SupportView>("menu");
@@ -230,9 +244,15 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [soundEnabled, setSoundEnabled]   = useState(true);
   const [cursorGlow, setCursorGlow]       = useState(true);
   const [reduceMotion, setReduceMotion]   = useState(false);
+  const [showThemeToggle, setShowThemeToggle] = useState(true);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [copied, setCopied]               = useState(false);
   const [pwOpen, setPwOpen]               = useState(false);
+  const [isMac, setIsMac]                 = useState(false);
+
+  useEffect(() => {
+    setIsMac(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
+  }, []);
 
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -240,6 +260,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     setSoundEnabled(localStorage.getItem("nc-sound") !== "false");
     setCursorGlow(localStorage.getItem("nc-cursor-glow") !== "false");
     setReduceMotion(localStorage.getItem("nc-reduce-motion") === "true");
+    setShowThemeToggle(localStorage.getItem("nc-theme-toggle") !== "false");
   }, [open]);
 
   useEffect(() => {
@@ -247,6 +268,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     if (open) document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (open && openShortcuts) {
+      setCat("support");
+      setShortcutsOpen(true);
+    }
+  }, [open, openShortcuts]);
 
   // Reset support sub-view when switching categories
   function goToCategory(id: Category) {
@@ -269,6 +297,11 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     setReduceMotion(val);
     localStorage.setItem("nc-reduce-motion", String(val));
     window.dispatchEvent(new CustomEvent("nc-settings", { detail: { reduceMotion: val } }));
+  }
+  function toggleThemeToggle(val: boolean) {
+    setShowThemeToggle(val);
+    localStorage.setItem("nc-theme-toggle", String(val));
+    window.dispatchEvent(new CustomEvent("nc-settings", { detail: { themeToggle: val } }));
   }
 
   async function handleShare() {
@@ -378,6 +411,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 <Row label="Reduce motion" description="Disable non-essential animations">
                   <Toggle checked={reduceMotion} onChange={toggleReduceMotion} />
                 </Row>
+                <Row label="Theme picker" description="Show the floating theme button at the bottom">
+                  <Toggle checked={showThemeToggle} onChange={toggleThemeToggle} />
+                </Row>
                 <div style={{ paddingTop: 16 }}>
                   <p style={{ color: "var(--th-text-2)", fontSize: 11, lineHeight: 1.5 }}>
                     Changes take effect immediately. Settings are saved in your browser.
@@ -449,20 +485,30 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
                     {shortcutsOpen && (
                       <div style={{ borderRadius: 10, border: "1px solid var(--th-border)", overflow: "hidden", marginTop: -4 }}>
-                        {SHORTCUTS.map((s, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                            padding: "9px 14px", borderBottom: i < SHORTCUTS.length - 1 ? "1px solid var(--th-border)" : "none",
-                            background: "var(--th-bg)" }}>
-                            <span style={{ color: "var(--th-text-2)", fontSize: 12 }}>{s.label}</span>
-                            <div style={{ display: "flex", gap: 4 }}>
-                              {s.keys.map((k) => (
-                                <kbd key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 5,
-                                  background: "var(--th-card)", border: "1px solid var(--th-border)",
-                                  color: "var(--th-text)", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>{k}</kbd>
-                              ))}
+                        {SHORTCUTS.map((s, i) => {
+                          const resolvedKeys = s.keys.map((k) =>
+                            typeof k === "string" ? k : (isMac ? k.mac : k.other)
+                          );
+                          return (
+                            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                              padding: "9px 14px", borderBottom: i < SHORTCUTS.length - 1 ? "1px solid var(--th-border)" : "none",
+                              background: "var(--th-bg)" }}>
+                              <span style={{ color: "var(--th-text-2)", fontSize: 12 }}>{s.label}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                                {resolvedKeys.flatMap((k, ki) => [
+                                  ...(ki > 0 ? [
+                                    <span key={`sep-${i}-${ki}`} style={{ color: "var(--th-text-2)", fontSize: 10, userSelect: "none", lineHeight: 1 }}>
+                                      {s.combo ? "+" : "›"}
+                                    </span>
+                                  ] : []),
+                                  <kbd key={`k-${i}-${ki}`} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 5,
+                                    background: "var(--th-card)", border: "1px solid var(--th-border)",
+                                    color: "var(--th-text)", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>{k}</kbd>,
+                                ])}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 

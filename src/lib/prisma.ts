@@ -8,16 +8,19 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const pool = new Pool({
-    connectionString: process.env.DIRECT_URL,
+    // Use the PgBouncer-pooled URL for all runtime queries.
+    // DIRECT_URL is reserved for migrations (prisma.config.ts).
+    connectionString: process.env.DATABASE_URL,
+    // Keep the pg.Pool small — PgBouncer handles the real pooling.
+    max: 3,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
 
-// Invalidate stale singleton if it's missing newly generated models
 const cached = globalForPrisma.prisma;
-const isStale = cached && !("chatMessage" in cached);
+const isStale = cached && (!("chatMessage" in cached) || !("course" in cached));
 
-export const prisma = (!cached || isStale) ? createPrismaClient() : cached;
+export const prisma = !cached || isStale ? createPrismaClient() : cached;
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

@@ -1,18 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { CTAButton } from "@/components/CTAButton";
 import { Component as EtherealShadow } from "@/components/ui/etheral-shadow";
 import { AutoScrollingClientCarousel } from "@/components/ui/auto-scrolling-carousel";
 import { FlickeringFooter } from "@/components/ui/flickering-footer";
-
-// 3D folder stack — loaded client-side only, zero SSR cost
-const FolderStack = dynamic(
-  () => import("@/components/FolderStack").then((m) => ({ default: m.FolderStack })),
-  { ssr: false, loading: () => null }
-);
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -38,36 +31,60 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function UserFeedbacksSection() {
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
+function FeedbackCard({ fb }: { fb: FeedbackItem }) {
+  return (
+    <div
+      style={{
+        width: 280,
+        flexShrink: 0,
+        borderRadius: 14,
+        background: "var(--th-card)",
+        border: "1px solid var(--th-border)",
+        padding: "20px 20px 18px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        marginRight: 16,
+      }}
+    >
+      <StarRating rating={fb.rating} />
+      <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", lineHeight: 1.65, flex: 1, margin: 0 }}>
+        &ldquo;{fb.message}&rdquo;
+      </p>
+      <div style={{ borderTop: "1px solid var(--th-border)", paddingTop: 10 }}>
+        <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 600, margin: 0 }}>{fb.name}</p>
+        {fb.role && <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", margin: "2px 0 0" }}>{fb.role}</p>}
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    fetch("/api/feedback")
-      .then((r) => r.json())
-      .then((data: FeedbackItem[]) => { setFeedbacks(Array.isArray(data) ? data : []); setLoaded(true); })
-      .catch(() => setLoaded(true));
-  }, []);
-
-  // Don't render the section if no approved feedbacks yet
+function FeedbackCarousel({ feedbacks, loaded }: { feedbacks: FeedbackItem[]; loaded: boolean }) {
   if (loaded && feedbacks.length === 0) return null;
 
+  // Triple the array so the CSS loop is seamless
+  const items = feedbacks.length > 0
+    ? [...feedbacks, ...feedbacks, ...feedbacks]
+    : [];
+
   return (
-    <section className="px-6 md:px-10 py-16 max-w-5xl mx-auto">
-      <Reveal>
-        <div className="flex items-center gap-3 mb-10">
-          <div style={{ width: 20, height: 1.5, background: "var(--th-accent)" }} />
-          <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 600 }}>
-            What users say
-          </p>
-        </div>
-      </Reveal>
+    <section className="py-16">
+      <div className="max-w-5xl mx-auto px-6 md:px-10">
+        <Reveal>
+          <div className="flex items-center gap-3 mb-10">
+            <div style={{ width: 20, height: 1.5, background: "var(--th-accent)" }} />
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 600 }}>
+              What users say
+            </p>
+          </div>
+        </Reveal>
+      </div>
 
       {!loaded ? (
-        // Skeleton
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[0, 1, 2].map((i) => (
-            <div key={i} style={{ borderRadius: 14, background: "var(--th-card)", border: "1px solid var(--th-border)", padding: "20px 20px 18px", opacity: 0.5 }}>
+        // Skeleton — scrollable row hint
+        <div className="flex gap-4 px-6 md:px-10 overflow-hidden">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ width: 280, flexShrink: 0, borderRadius: 14, background: "var(--th-card)", border: "1px solid var(--th-border)", padding: "20px 20px 18px", opacity: 0.4 }}>
               <div style={{ width: "40%", height: 8, borderRadius: 4, background: "var(--th-border)", marginBottom: 14 }} />
               <div style={{ width: "100%", height: 6, borderRadius: 4, background: "var(--th-border)", marginBottom: 8 }} />
               <div style={{ width: "75%", height: 6, borderRadius: 4, background: "var(--th-border)" }} />
@@ -75,21 +92,21 @@ function UserFeedbacksSection() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {feedbacks.map((fb, i) => (
-            <Reveal key={fb.id} delay={i * 70}>
-              <div style={{ borderRadius: 14, background: "var(--th-card)", border: "1px solid var(--th-border)", padding: "20px 20px 18px", display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
-                <StarRating rating={fb.rating} />
-                <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", lineHeight: 1.65, flex: 1, margin: 0 }}>
-                  "{fb.message}"
-                </p>
-                <div style={{ borderTop: "1px solid var(--th-border)", paddingTop: 10 }}>
-                  <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 600, margin: 0 }}>{fb.name}</p>
-                  {fb.role && <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem", margin: "2px 0 0" }}>{fb.role}</p>}
-                </div>
-              </div>
-            </Reveal>
-          ))}
+        <div
+          className="overflow-hidden"
+          style={{
+            maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+            WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+          }}
+        >
+          <div
+            className="flex w-max items-stretch py-2"
+            style={{ animation: "asc-ribbon 40s linear infinite" }}
+          >
+            {items.map((fb, i) => (
+              <FeedbackCard key={`${fb.id}-${i}`} fb={fb} />
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -282,7 +299,7 @@ function ProblemCard({
           }}
         />
         {/* Number + animated illustration inline */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
           <span
             style={{
               fontFamily: "var(--font-display)",
@@ -293,7 +310,7 @@ function ProblemCard({
           >
             {n}
           </span>
-          <div style={{ flexShrink: 0 }}>{visual}</div>
+          <div style={{ flexShrink: 0, marginLeft: "auto", paddingRight: 4 }}>{visual}</div>
         </div>
         <h3 style={{ color: "var(--th-text)", fontWeight: 600, fontSize: "0.9375rem", marginBottom: 8, lineHeight: 1.4 }}>
           {title}
@@ -447,6 +464,18 @@ const features = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const mobile = useIsMobile();
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [feedbacksLoaded, setFeedbacksLoaded] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    fetch("/api/feedback")
+      .then((r) => r.json())
+      .then((data: FeedbackItem[]) => { setFeedbacks(Array.isArray(data) ? data : []); setFeedbacksLoaded(true); })
+      .catch(() => setFeedbacksLoaded(true));
+  }, []);
+
   return (
     <main style={{ color: "var(--th-text)" }} className="min-h-screen nc-landing">
       {/* ── Full-page ethereal background — skipped on mobile for performance ── */}
@@ -490,9 +519,9 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="nc-hero-grid px-6 md:px-10 pt-16 md:pt-20 pb-16 max-w-5xl mx-auto">
+      <section className="px-6 md:px-10 pt-16 md:pt-20 pb-16 max-w-5xl mx-auto">
         {/* Left: text */}
-        <div className="flex flex-col justify-center" style={{ alignItems: "flex-start" }}>
+        <div className="flex flex-col justify-center items-center text-center">
           <Reveal>
             <div
               style={{
@@ -554,34 +583,32 @@ export default function LandingPage() {
             </div>
           </Reveal>
 
-          {/* Social proof */}
-          <Reveal delay={360}>
-            <div className="flex items-center gap-3 mt-10">
-              <div className="flex -space-x-2">
-                {["#7dd3fc","#86efac","#fca5a5","#f0abfc"].map((c, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: "50%",
-                      background: c,
-                      border: "2px solid var(--th-bg)",
-                    }}
-                  />
-                ))}
+          {/* Social proof — only shown once real feedback exists */}
+          {mounted && feedbacksLoaded && feedbacks.length > 0 && (
+            <Reveal delay={360}>
+              <div className="flex items-center gap-3 mt-10">
+                <div className="flex -space-x-2">
+                  {["#7dd3fc","#86efac","#fca5a5","#f0abfc"].map((c, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        background: c,
+                        border: "2px solid var(--th-bg)",
+                      }}
+                    />
+                  ))}
+                </div>
+                <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }}>
+                  Used by students across universities
+                </p>
               </div>
-              <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }}>
-                Used by students across universities
-              </p>
-            </div>
-          </Reveal>
+            </Reveal>
+          )}
         </div>
 
-        {/* Right: 3D folder stack */}
-        <div className="nc-hero-scene-wrap">
-          <FolderStack />
-        </div>
       </section>
 
       {/* ── Divider ───────────────────────────────────────────────────────── */}
@@ -593,7 +620,7 @@ export default function LandingPage() {
       <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
 
       {/* ── User Feedbacks ────────────────────────────────────────────────── */}
-      <UserFeedbacksSection />
+      <FeedbackCarousel feedbacks={feedbacks} loaded={feedbacksLoaded} />
 
       <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
 
