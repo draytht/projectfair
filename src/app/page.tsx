@@ -502,6 +502,13 @@ export default function LandingPage() {
         </Link>
         <div className="flex items-center gap-2">
           <Link
+            href="/pricing"
+            style={{ color: "var(--th-text-2)" }}
+            className="text-sm px-3 py-2.5 rounded-lg hover:opacity-70 transition-opacity min-h-[44px] flex items-center"
+          >
+            Pricing
+          </Link>
+          <Link
             href="/login"
             style={{ color: "var(--th-text-2)" }}
             className="text-sm px-3 py-2.5 rounded-lg hover:opacity-70 transition-opacity min-h-[44px] flex items-center"

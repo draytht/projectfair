@@ -380,13 +380,25 @@ function CourseAccordion({
   unlinkedProjects,
   isProfessor,
   onLinkProject,
+  onDelete,
 }: {
   course: Course;
   unlinkedProjects: ProjectStub[];
   isProfessor: boolean;
   onLinkProject: (courseId: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Delete course "${course.name}"? It will be moved to Trash and can be restored.`)) return;
+    setDeleting(true);
+    const res = await fetch(`/api/courses/${course.id}`, { method: "DELETE" });
+    if (res.ok) onDelete(course.id);
+    else setDeleting(false);
+  }
 
   return (
     <div
@@ -449,7 +461,7 @@ function CourseAccordion({
       {open && (
         <div style={{ padding: "0 20px 20px", borderTop: "1px solid var(--th-border)" }}>
           {course.projects.length === 0 ? (
-            <div style={{ padding: "24px 0", textAlign: "center" }}>
+            <div style={{ padding: "24px 0 8px", textAlign: "center" }}>
               <p style={{ color: "var(--th-text-2)", fontSize: "0.8125rem", marginBottom: 12 }}>No projects linked to this course yet.</p>
               <button
                 onClick={() => onLinkProject(course.id)}
@@ -484,6 +496,42 @@ function CourseAccordion({
               )}
             </>
           )}
+
+          {/* Delete course */}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--th-border)", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                background: "none",
+                border: "1px solid rgba(239,68,68,0.3)",
+                color: "#ef4444",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                padding: "6px 14px",
+                borderRadius: 8,
+                cursor: deleting ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                opacity: deleting ? 0.5 : 1,
+                transition: "background 0.14s, border-color 0.14s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+                e.currentTarget.style.borderColor = "rgba(239,68,68,0.5)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="2" y1="4" x2="13" y2="4" /><path d="M5.5 4V2.8h4V4" /><path d="M3.5 4l.7 8.5a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L11.5 4" />
+              </svg>
+              {deleting ? "Moving to Trash…" : "Move to Trash"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -602,6 +650,7 @@ export default function CoursesPage() {
               unlinkedProjects={unlinkedProjects}
               isProfessor={isProfessor}
               onLinkProject={(id) => setLinkingCourseId(id)}
+              onDelete={(id) => setCourses((prev) => prev.filter((c) => c.id !== id))}
             />
           ))}
         </div>

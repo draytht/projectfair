@@ -49,6 +49,10 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pwOpen, setPwOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,6 +133,26 @@ export default function ProfilePage() {
 
   function updateLink(idx: number, field: keyof PersonalLink, value: string) {
     setPersonalLinks(personalLinks.map((l, i) => i === idx ? { ...l, [field]: value } : l));
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== "DELETE") return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/profile", { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data?.error ?? "Failed to delete account");
+      }
+      // Clear auth session then hard-navigate to landing page
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.replace("/");
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Delete failed");
+      setDeleting(false);
+    }
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -574,6 +598,82 @@ export default function ProfilePage() {
             Change Password
           </button>
         </div>
+      </div>
+
+      {/* Delete Account card */}
+      <div
+        style={{ background: "var(--th-card)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, animationDelay: "0.24s" }}
+        className="nc-u-in p-6"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 style={{ color: "#ef4444", fontWeight: 600, fontSize: "0.9375rem", margin: 0 }}>Delete Account</h2>
+            <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem", margin: "4px 0 0" }}>
+              Permanently delete your account and all associated data. This cannot be undone.
+            </p>
+          </div>
+          <button
+            onClick={() => { setDeleteOpen(true); setDeleteConfirm(""); setDeleteError(null); }}
+            style={{
+              padding: "8px 18px", borderRadius: 8, border: "1px solid rgba(239,68,68,0.4)",
+              background: "rgba(239,68,68,0.08)", color: "#ef4444", fontSize: 13, fontWeight: 500,
+              cursor: "pointer", flexShrink: 0, transition: "background 0.15s, border-color 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.16)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.7)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)"; }}
+          >
+            Delete Account
+          </button>
+        </div>
+
+        {/* Inline confirmation panel */}
+        {deleteOpen && (
+          <div style={{ marginTop: 20, padding: "16px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10 }}>
+            <p style={{ color: "var(--th-text)", fontSize: 13, margin: "0 0 12px" }}>
+              Type <strong>DELETE</strong> to confirm. This will remove your account, projects, and all related data permanently.
+            </p>
+            <div className="flex gap-3 items-center flex-wrap">
+              <input
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder="DELETE"
+                style={{
+                  background: "var(--th-bg)", border: "1px solid rgba(239,68,68,0.3)",
+                  color: "var(--th-text)", borderRadius: 8, padding: "7px 12px",
+                  fontSize: 13, outline: "none", width: 140,
+                  transition: "border-color 0.15s",
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "#ef4444")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)")}
+              />
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirm !== "DELETE" || deleting}
+                style={{
+                  padding: "7px 18px", borderRadius: 8, border: "none",
+                  background: deleteConfirm === "DELETE" ? "#ef4444" : "rgba(239,68,68,0.3)",
+                  color: "#fff", fontSize: 13, fontWeight: 600,
+                  cursor: deleteConfirm !== "DELETE" || deleting ? "not-allowed" : "pointer",
+                  opacity: deleting ? 0.7 : 1,
+                  transition: "background 0.15s, opacity 0.15s",
+                }}
+              >
+                {deleting ? "Deleting…" : "Confirm Delete"}
+              </button>
+              <button
+                onClick={() => setDeleteOpen(false)}
+                style={{ color: "var(--th-text-2)", fontSize: 13, cursor: "pointer", background: "none", border: "none", padding: "7px 4px", transition: "color 0.14s" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--th-text)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "var(--th-text-2)")}
+              >
+                Cancel
+              </button>
+            </div>
+            {deleteError && (
+              <p style={{ color: "#ef4444", fontSize: 12, marginTop: 10 }}>{deleteError}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />

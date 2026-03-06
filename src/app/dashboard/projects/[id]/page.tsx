@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import ProjectChat from "./_components/ProjectChat";
+import { DeadlinePicker } from "@/components/ui/deadline-picker";
 
 type User = { id: string; name: string; preferredName?: string | null; avatarUrl?: string | null };
 
@@ -60,6 +61,7 @@ type Project = {
   name: string;
   courseCode: string | null;
   description: string | null;
+  deadline: string | null;
   members: Member[];
   tasks: Task[];
 };
@@ -75,6 +77,84 @@ type ContributionScore = {
     otherActions: number;
   };
 };
+
+function DeadlineCountdown({ deadline }: { deadline: string }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const target = new Date(deadline).getTime();
+  const diff = target - now;
+  const overdue = diff <= 0;
+
+  const totalSecs = Math.max(0, Math.floor(diff / 1000));
+  const days = Math.floor(totalSecs / 86400);
+  const hours = Math.floor((totalSecs % 86400) / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  // Color based on urgency
+  const color = overdue
+    ? "#ef4444"
+    : days < 1
+    ? "#f97316"
+    : days < 3
+    ? "#eab308"
+    : "var(--th-accent)";
+
+  const urgencyBg = overdue
+    ? "rgba(239,68,68,0.08)"
+    : days < 1
+    ? "rgba(249,115,22,0.08)"
+    : days < 3
+    ? "rgba(234,179,8,0.08)"
+    : "color-mix(in srgb, var(--th-accent) 8%, transparent)";
+
+  const urgencyBorder = overdue
+    ? "rgba(239,68,68,0.25)"
+    : days < 1
+    ? "rgba(249,115,22,0.25)"
+    : days < 3
+    ? "rgba(234,179,8,0.25)"
+    : "color-mix(in srgb, var(--th-accent) 20%, transparent)";
+
+  return (
+    <div
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 10,
+        background: urgencyBg,
+        border: `1px solid ${urgencyBorder}`,
+        borderRadius: 10,
+        padding: "7px 14px",
+        marginTop: 8,
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      {overdue ? (
+        <span style={{ color, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em" }}>
+          DEADLINE PASSED
+        </span>
+      ) : (
+        <span style={{ color, fontSize: 12, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+          {days > 0 && <>{days}d </>}{pad(hours)}h {pad(mins)}m {pad(secs)}s left
+        </span>
+      )}
+      <span style={{ color: "var(--th-text-2)", fontSize: 11 }}>
+        · {new Date(deadline).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+      </span>
+    </div>
+  );
+}
 
 const NEXT_STATUS: Record<Task["status"], Task["status"]> = {
   TODO: "IN_PROGRESS",
@@ -144,6 +224,10 @@ export default function ProjectPage() {
   const [boardSwipeIdx, setBoardSwipeIdx] = useState(0);
   const swipeRef = useRef<{ startX: number; startY: number } | null>(null);
   const [backHovered, setBackHovered] = useState(false);
+  const [deadlineEditing, setDeadlineEditing] = useState(false);
+  const [deadlineValue, setDeadlineValue] = useState("");
+  const [deadlineSaving, setDeadlineSaving] = useState(false);
+  const [dangerWorking, setDangerWorking] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projects/${id}/contributions`)
@@ -168,6 +252,7 @@ export default function ProjectPage() {
       .then((r) => r.json())
       .then((data) => {
         setProject(data);
+        setDeadlineValue(data.deadline ? new Date(data.deadline).toISOString().slice(0, 10) : "");
         setLoading(false);
       });
   }, [id]);
@@ -328,6 +413,41 @@ export default function ProjectPage() {
     }
   }
 
+  async function handleSaveDeadline() {
+    setDeadlineSaving(true);
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deadline: deadlineValue || null }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setProject((prev) => prev ? { ...prev, deadline: updated.deadline } : prev);
+    }
+    setDeadlineSaving(false);
+    setDeadlineEditing(false);
+  }
+
+  async function markProjectDone() {
+    if (!confirm("Mark this project as complete? It will move to your Archive.")) return;
+    setDangerWorking(true);
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ARCHIVED", archivedReason: "COMPLETED" }),
+    });
+    if (res.ok) router.push("/dashboard/archive");
+    else setDangerWorking(false);
+  }
+
+  async function deleteProject() {
+    if (!confirm("Delete this project? It will be moved to Trash and can be restored within 30 days.")) return;
+    setDangerWorking(true);
+    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    if (res.ok) router.push("/dashboard/projects");
+    else setDangerWorking(false);
+  }
+
   function onBoardTouchStart(e: React.TouchEvent) {
     swipeRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY };
   }
@@ -439,6 +559,54 @@ export default function ProjectPage() {
               {project.description}
             </p>
           )}
+          {/* Deadline: countdown + inline edit for leaders */}
+          {(() => {
+            const myMember = project.members.find((m) => m.user.id === currentUserId);
+            const isPrivileged = myMember?.role === "TEAM_LEADER" || myMember?.role === "PROFESSOR";
+            return (
+              <div className="mt-2">
+                {deadlineEditing ? (
+                  <div className="flex flex-col gap-2" style={{ maxWidth: 320 }}>
+                    <DeadlinePicker value={deadlineValue} onChange={setDeadlineValue} />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveDeadline}
+                        disabled={deadlineSaving}
+                        style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", borderRadius: 8, padding: "6px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: deadlineSaving ? 0.6 : 1 }}
+                      >
+                        {deadlineSaving ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => { setDeadlineEditing(false); setDeadlineValue(project.deadline ? new Date(project.deadline).toISOString().slice(0, 10) : ""); }}
+                        style={{ color: "var(--th-text-2)", background: "none", border: "1px solid var(--th-border)", borderRadius: 8, fontSize: 12, cursor: "pointer", padding: "6px 12px" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {project.deadline ? (
+                      <DeadlineCountdown deadline={project.deadline} />
+                    ) : isPrivileged ? (
+                      <span style={{ color: "var(--th-text-2)", fontSize: 12 }}>No deadline set.</span>
+                    ) : null}
+                    {isPrivileged && (
+                      <button
+                        onClick={() => setDeadlineEditing(true)}
+                        style={{ color: "var(--th-text-2)", background: "none", border: "1px solid var(--th-border)", borderRadius: 7, padding: "4px 10px", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, transition: "color 0.14s, border-color 0.14s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--th-accent)"; e.currentTarget.style.borderColor = "var(--th-accent)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--th-text-2)"; e.currentTarget.style.borderColor = "var(--th-border)"; }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        {project.deadline ? "Edit deadline" : "Set deadline"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
         <div className="flex gap-2 flex-wrap shrink-0">
           {currentUserGlobalRole === "PROFESSOR" && (
@@ -1014,6 +1182,46 @@ export default function ProjectPage() {
       {tab === "chat" && currentUserId && (
         <ProjectChat projectId={id} currentUserId={currentUserId} />
       )}
+
+      {/* Danger Zone — team leaders only */}
+      {(() => {
+        const myMember = project.members.find((m) => m.user.id === currentUserId);
+        if (myMember?.role !== "TEAM_LEADER") return null;
+        return (
+          <div style={{ marginTop: 40, border: "1px solid rgba(239,68,68,0.2)", borderRadius: 14, padding: "20px 24px", background: "rgba(239,68,68,0.03)" }}>
+            <p style={{ color: "#ef4444", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+              Danger Zone
+            </p>
+            <p style={{ color: "var(--th-text-2)", fontSize: 12, marginBottom: 16 }}>
+              These actions affect the entire project and all its members.
+            </p>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={markProjectDone}
+                disabled={dangerWorking}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, border: "1px solid var(--th-border)", background: "var(--th-bg)", color: "var(--th-text)", fontSize: 12, fontWeight: 600, cursor: dangerWorking ? "not-allowed" : "pointer", opacity: dangerWorking ? 0.6 : 1, transition: "border-color 0.14s" }}
+                onMouseEnter={(e) => { if (!dangerWorking) e.currentTarget.style.borderColor = "var(--th-accent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--th-border)"; }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--th-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Mark as Complete
+              </button>
+              <button
+                onClick={deleteProject}
+                disabled={dangerWorking}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.07)", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: dangerWorking ? "not-allowed" : "pointer", opacity: dangerWorking ? 0.6 : 1, transition: "background 0.14s" }}
+                onMouseEnter={(e) => { if (!dangerWorking) e.currentTarget.style.background = "rgba(239,68,68,0.14)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.07)"; }}
+              >
+                <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="2,4 13,4"/><path d="M5.5 4V2.5h4V4"/><path d="M3.5 4l.7 8.5a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L11.5 4"/>
+                </svg>
+                Move to Trash
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Member Profile Modal */}
       {viewingMember && (

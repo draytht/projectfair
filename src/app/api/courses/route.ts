@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { checkCourseLimit } from "@/lib/plan";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -9,7 +10,7 @@ export async function GET() {
 
   try {
     const courses = await prisma.course.findMany({
-      where: { ownerId: user.id },
+      where: { ownerId: user.id, deletedAt: null },
       orderBy: { createdAt: "asc" },
       include: {
         projects: {
@@ -37,6 +38,9 @@ export async function POST(req: Request) {
   const { name, code, description } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Course name is required" }, { status: 400 });
   if (!code?.trim()) return NextResponse.json({ error: "Course code is required" }, { status: 400 });
+
+  const { allowed, message } = await checkCourseLimit(user.id);
+  if (!allowed) return NextResponse.json({ error: message }, { status: 403 });
 
   try {
     const course = await prisma.course.create({
