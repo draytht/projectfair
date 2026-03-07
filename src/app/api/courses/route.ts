@@ -14,6 +14,7 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
       include: {
         projects: {
+          where: { deletedAt: null, status: { not: "DELETED" } },
           select: {
             id: true,
             name: true,

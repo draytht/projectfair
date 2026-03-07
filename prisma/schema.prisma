@@ -133,6 +133,10 @@ model Task {
   assigneeId  String?
   dueDate     DateTime?
   completedAt DateTime?
+  outputType       String?   // "PDF" | "PPTX" | "TXT" | "DOCX" | "CODE"
+  outputFileUrl    String?
+  outputFileName   String?
+  outputUploadedAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

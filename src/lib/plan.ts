@@ -22,7 +22,7 @@ export async function getUserPlan(userId: string): Promise<PlanName> {
 export async function checkCourseLimit(userId: string): Promise<{ allowed: boolean; message?: string }> {
   const plan = await getUserPlan(userId);
   const limit = PLAN_LIMITS[plan].courses;
-  const count = await prisma.course.count({ where: { ownerId: userId } });
+  const count = await prisma.course.count({ where: { ownerId: userId, deletedAt: null } });
   if (count >= limit) {
     return {
       allowed: false,
@@ -37,7 +37,7 @@ export async function checkCourseLimit(userId: string): Promise<{ allowed: boole
 export async function checkProjectLimit(userId: string): Promise<{ allowed: boolean; message?: string }> {
   const plan = await getUserPlan(userId);
   const limit = PLAN_LIMITS[plan].projects;
-  const count = await prisma.project.count({ where: { ownerId: userId } });
+  const count = await prisma.project.count({ where: { ownerId: userId, deletedAt: null } });
   if (count >= limit) {
     return {
       allowed: false,

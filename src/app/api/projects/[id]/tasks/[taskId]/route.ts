@@ -12,7 +12,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { status, title, description, assigneeId, dueDate } = body;
+  const { status, title, description, assigneeId, dueDate, outputType, outputFileUrl, outputFileName } = body;
 
   // Fetch existing task to check assignee
   const existing = await prisma.task.findUnique({ where: { id: taskId } });
@@ -25,8 +25,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Only the assigned member can update this task's status." }, { status: 403 });
   }
 
-  // Detail edits: assignee OR team leader / professor
-  const hasDetailEdit = title !== undefined || description !== undefined || assigneeId !== undefined || dueDate !== undefined;
+  // Output file submission: only the assignee
+  if (outputFileUrl !== undefined && !isAssignee) {
+    return NextResponse.json({ error: "Only the assigned member can submit output files." }, { status: 403 });
+  }
+
+  // Detail edits (including outputType): assignee OR team leader / professor
+  const hasDetailEdit = title !== undefined || description !== undefined || assigneeId !== undefined || dueDate !== undefined || outputType !== undefined;
   if (hasDetailEdit && !isAssignee) {
     const member = await prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId: id, userId: user.id } },
@@ -35,6 +40,14 @@ export async function PATCH(
     if (!isPrivileged) {
       return NextResponse.json({ error: "Only the assigned member or team leaders can edit this task." }, { status: 403 });
     }
+  }
+
+  // Block DONE if output is required but not yet submitted
+  const finalStatus = status !== undefined ? status : existing.status;
+  const finalOutputType = outputType !== undefined ? outputType : existing.outputType;
+  const finalOutputFileUrl = outputFileUrl !== undefined ? outputFileUrl : existing.outputFileUrl;
+  if (finalStatus === "DONE" && finalOutputType && !finalOutputFileUrl) {
+    return NextResponse.json({ error: `This task requires a ${finalOutputType} file to be uploaded before marking it as done.` }, { status: 400 });
   }
 
   const updateData: Record<string, unknown> = {};
@@ -52,6 +65,12 @@ export async function PATCH(
   if (description !== undefined) updateData.description = description;
   if (assigneeId !== undefined) updateData.assigneeId = assigneeId || null;
   if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+  if (outputType !== undefined) updateData.outputType = outputType || null;
+  if (outputFileUrl !== undefined) {
+    updateData.outputFileUrl = outputFileUrl || null;
+    updateData.outputFileName = outputFileName || null;
+    updateData.outputUploadedAt = outputFileUrl ? new Date() : null;
+  }
 
   const task = await prisma.task.update({
     where: { id: taskId },

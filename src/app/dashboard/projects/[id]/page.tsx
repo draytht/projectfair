@@ -54,7 +54,29 @@ type Task = {
   assigneeId?: string | null;
   dueDate: string | null;
   completedAt: string | null;
+  outputType: string | null;
+  outputFileUrl: string | null;
+  outputFileName: string | null;
+  outputUploadedAt: string | null;
 };
+
+const OUTPUT_CONFIG: Record<string, { label: string; accept: string; color: string; exts: string[] }> = {
+  PDF:  { label: "PDF",  accept: ".pdf",  color: "#ef4444", exts: [".pdf"] },
+  PPTX: { label: "PPTX", accept: ".pptx", color: "#f97316", exts: [".pptx"] },
+  DOCX: { label: "DOCX", accept: ".docx", color: "#3b82f6", exts: [".docx"] },
+  TXT:  { label: "TXT",  accept: ".txt",  color: "#6b7280", exts: [".txt"] },
+  CODE: {
+    label: "Code",
+    accept: ".js,.ts,.py,.java,.c,.cpp,.h,.cs,.php,.rb,.go,.rs,.swift,.kt,.jsx,.tsx,.html,.css,.json,.xml,.yaml,.yml,.sql,.sh",
+    color: "#a855f7",
+    exts: [".js",".ts",".py",".java",".c",".cpp",".h",".cs",".php",".rb",".go",".rs",".swift",".kt",".jsx",".tsx",".html",".css",".json",".xml",".yaml",".yml",".sql",".sh"],
+  },
+};
+
+function isValidOutputFile(fileName: string, outputType: string): boolean {
+  const ext = fileName.slice(fileName.lastIndexOf(".")).toLowerCase();
+  return OUTPUT_CONFIG[outputType]?.exts.includes(ext) ?? true;
+}
 type Member = { id: string; role: string; user: User };
 type Project = {
   id: string;
@@ -201,6 +223,7 @@ type EditState = {
   description: string;
   assigneeId: string;
   dueDate: string;
+  outputType: string;
   saving: boolean;
 };
 
@@ -219,6 +242,9 @@ export default function ProjectPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserGlobalRole, setCurrentUserGlobalRole] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const taskOutputInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingOutputTaskId, setUploadingOutputTaskId] = useState<string | null>(null);
+  const [outputFileError, setOutputFileError] = useState<{ taskId: string; outputType: string; uploadedName: string } | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [viewingMember, setViewingMember] = useState<{ member: Member; profile: MemberFullProfile | null; loading: boolean } | null>(null);
   const [boardSwipeIdx, setBoardSwipeIdx] = useState(0);
@@ -278,6 +304,10 @@ export default function ProjectPage() {
   async function moveTask(task: Task) {
     if (!project) return;
     const newStatus = NEXT_STATUS[task.status];
+
+    // Block DONE if output is required but not submitted (button is hidden, this is a safety guard)
+    if (newStatus === "DONE" && task.outputType && !task.outputFileUrl) return;
+
     setUpdating(task.id);
 
     setProject((prev) =>
@@ -347,6 +377,72 @@ export default function ProjectPage() {
     if (res.ok) setFiles((prev) => prev.filter((f) => f.id !== fileId));
   }
 
+  function openTaskOutputUpload(taskId: string, outputType: string) {
+    const config = OUTPUT_CONFIG[outputType];
+    if (!config || !taskOutputInputRef.current) return;
+    // Block upload if deadline passed and no file yet
+    const task = project?.tasks.find((t) => t.id === taskId);
+    if (task?.dueDate && !task.outputFileUrl && new Date() > new Date(task.dueDate)) return;
+    setUploadingOutputTaskId(taskId);
+    taskOutputInputRef.current.accept = config.accept;
+    taskOutputInputRef.current.click();
+  }
+
+  async function handleTaskOutputUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingOutputTaskId) return;
+
+    // Validate file type against the task's required output type
+    const task = project?.tasks.find((t) => t.id === uploadingOutputTaskId);
+    if (task?.outputType && !isValidOutputFile(file.name, task.outputType)) {
+      setOutputFileError({ taskId: uploadingOutputTaskId, outputType: task.outputType, uploadedName: file.name });
+      setUploadingOutputTaskId(null);
+      if (taskOutputInputRef.current) taskOutputInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      // Reuse the existing project-files bucket
+      const path = `${id}/${Date.now()}-${file.name}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("project-files")
+        .upload(path, file, { upsert: false });
+      if (uploadErr) throw new Error(uploadErr.message);
+      const { data: urlData } = supabase.storage.from("project-files").getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+
+      // Save to project files so it shows in the Files tab
+      const fileRes = await fetch(`/api/projects/${id}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, url: publicUrl, size: file.size, mimeType: file.type }),
+      });
+      if (fileRes.ok) {
+        const saved = await fileRes.json();
+        setFiles((prev) => [saved, ...prev]);
+      }
+
+      // Link the file URL to the task
+      const taskRes = await fetch(`/api/projects/${id}/tasks/${uploadingOutputTaskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outputFileUrl: publicUrl, outputFileName: file.name }),
+      });
+      if (taskRes.ok) {
+        const updated: Task = await taskRes.json();
+        setProject((prev) =>
+          prev ? { ...prev, tasks: prev.tasks.map((t) => (t.id === updated.id ? updated : t)) } : prev
+        );
+      }
+    } catch (err) {
+      console.error("Task output upload failed:", err);
+    } finally {
+      setUploadingOutputTaskId(null);
+      if (taskOutputInputRef.current) taskOutputInputRef.current.value = "";
+    }
+  }
+
   async function kickMember(memberId: string) {
     if (!confirm("Remove this member from the project?")) return;
     const res = await fetch(`/api/projects/${id}/members/${memberId}`, { method: "DELETE" });
@@ -370,6 +466,7 @@ export default function ProjectPage() {
       description: task.description ?? "",
       assigneeId: task.assigneeId ?? "",
       dueDate: task.dueDate ? task.dueDate.slice(0, 10) : "",
+      outputType: task.outputType ?? "",
       saving: false,
     });
   }
@@ -386,6 +483,7 @@ export default function ProjectPage() {
         description: editState.description,
         assigneeId: editState.assigneeId || null,
         dueDate: editState.dueDate || null,
+        outputType: editState.outputType || null,
       }),
     });
 
@@ -752,33 +850,111 @@ export default function ProjectPage() {
                       Done {new Date(task.completedAt).toLocaleTimeString()}
                     </p>
                   )}
+                  {/* Output + actions — unified block */}
                   {(() => {
                     const isAssignee = task.assigneeId === currentUserId;
                     const canAction = isAssignee;
                     const canEdit = isAssignee || isPrivileged;
-                    if (!canAction && !canEdit) return null;
+                    const cfg = task.outputType ? OUTPUT_CONFIG[task.outputType] : null;
+                    const submitted = !!task.outputFileUrl;
+                    const isOverdue = !submitted && !!task.dueDate && new Date() > new Date(task.dueDate);
+                    const outputPending = !!task.outputType && !submitted;
+                    const hideCompleteBtn = task.status === "IN_PROGRESS" && outputPending;
+
                     return (
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {canAction && (
-                          <button
-                            onClick={() => moveTask(task)}
-                            disabled={updating === task.id}
-                            style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-accent) 30%,transparent)", borderRadius: 6 }}
-                            className="text-xs px-2.5 py-1.5 hover:opacity-70 transition disabled:opacity-30 cursor-pointer min-h-[32px] flex items-center"
-                          >
-                            {updating === task.id ? "…" : `→ ${STATUS_LABEL[task.status]}`}
-                          </button>
+                      <>
+                        {/* Output section */}
+                        {cfg && (
+                          task.status === "IN_PROGRESS" && isAssignee ? (
+                            submitted ? (
+                              // ✅ Submitted
+                              <div style={{ marginTop: 8, padding: "7px 10px", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)", borderRadius: 8 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  <span style={{ color: "#22c55e", fontSize: 11, fontWeight: 700 }}>Output submitted — {cfg.label}</span>
+                                </div>
+                                <a href={task.outputFileUrl!} target="_blank" rel="noopener noreferrer"
+                                  style={{ color: "#22c55e", fontSize: 10, opacity: 0.8, textDecoration: "underline", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                  title={task.outputFileName ?? ""}>{task.outputFileName}</a>
+                              </div>
+                            ) : isOverdue ? (
+                              // 🔒 Deadline passed, locked
+                              <div style={{ marginTop: 8, padding: "7px 10px", background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.22)", borderRadius: 8 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                  <span style={{ color: "#ef4444", fontSize: 11, fontWeight: 700 }}>Deadline passed — task locked</span>
+                                </div>
+                                <p style={{ color: "#ef4444", fontSize: 10, opacity: 0.75, marginTop: 2 }}>{cfg.label} was not submitted before the deadline.</p>
+                              </div>
+                            ) : (
+                              // ⏳ Upload required
+                              <div style={{ marginTop: 8, padding: "7px 10px", background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.22)", borderRadius: 8 }}>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    <span style={{ color: "#f97316", fontSize: 11, fontWeight: 700 }}>{cfg.label} required to complete</span>
+                                  </div>
+                                  <button
+                                    onClick={() => openTaskOutputUpload(task.id, task.outputType!)}
+                                    disabled={uploadingOutputTaskId === task.id}
+                                    style={{ color: "#f97316", border: "1px solid rgba(249,115,22,0.4)", borderRadius: 6, background: "rgba(249,115,22,0.1)", fontSize: 10, fontWeight: 600, padding: "3px 9px", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
+                                  >
+                                    {uploadingOutputTaskId === task.id ? "…" : "Upload"}
+                                  </button>
+                                </div>
+                                <p style={{ color: "var(--th-text-2)", fontSize: 10, marginTop: 3 }}>Also uploadable from the Files tab.</p>
+                              </div>
+                            )
+                          ) : (
+                            // Compact badge for non-assignee or other statuses
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
+                              <div style={{
+                                display: "inline-flex", alignItems: "center", gap: 4,
+                                background: submitted ? "rgba(34,197,94,0.10)" : `color-mix(in srgb, ${cfg.color} 10%, transparent)`,
+                                border: `1px solid ${submitted ? "rgba(34,197,94,0.3)" : `color-mix(in srgb, ${cfg.color} 30%, transparent)`}`,
+                                borderRadius: 6, padding: "2px 7px",
+                              }}>
+                                {submitted
+                                  ? <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  : <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                }
+                                <span style={{ color: submitted ? "#22c55e" : cfg.color, fontSize: 9, fontWeight: 700 }}>
+                                  {submitted ? `${cfg.label} submitted` : `${cfg.label} required`}
+                                </span>
+                              </div>
+                              {submitted && task.outputFileName && (
+                                <a href={task.outputFileUrl!} target="_blank" rel="noopener noreferrer"
+                                  style={{ color: "var(--th-text-2)", fontSize: 9, textDecoration: "underline", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                                  title={task.outputFileName}>{task.outputFileName}</a>
+                              )}
+                            </div>
+                          )
                         )}
-                        {canEdit && (
-                          <button
-                            onClick={() => openEdit(task)}
-                            style={{ color: "var(--th-text-2)", border: "1px solid var(--th-border)", borderRadius: 6 }}
-                            className="text-xs px-2.5 py-1.5 hover:opacity-70 transition cursor-pointer min-h-[32px] flex items-center"
-                          >
-                            Edit
-                          </button>
+                        {/* Action buttons */}
+                        {(canAction || canEdit) && (
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            {canAction && !hideCompleteBtn && (
+                              <button
+                                onClick={() => moveTask(task)}
+                                disabled={updating === task.id}
+                                style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-accent) 30%,transparent)", borderRadius: 6 }}
+                                className="text-xs px-2.5 py-1.5 hover:opacity-70 transition disabled:opacity-30 cursor-pointer min-h-[32px] flex items-center"
+                              >
+                                {updating === task.id ? "…" : `→ ${STATUS_LABEL[task.status]}`}
+                              </button>
+                            )}
+                            {canEdit && (
+                              <button
+                                onClick={() => openEdit(task)}
+                                style={{ color: "var(--th-text-2)", border: "1px solid var(--th-border)", borderRadius: 6 }}
+                                className="text-xs px-2.5 py-1.5 hover:opacity-70 transition cursor-pointer min-h-[32px] flex items-center"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </div>
                         )}
-                      </div>
+                      </>
                     );
                   })()}
                 </div>
@@ -1049,6 +1225,69 @@ export default function ProjectPage() {
       {/* Files Tab */}
       {tab === "files" && (
         <div className="nc-tab-panel">
+          {/* Pending Task Outputs for current user */}
+          {(() => {
+            const pending = project?.tasks.filter(
+              (t) => t.assigneeId === currentUserId && t.outputType && !t.outputFileUrl && t.status === "IN_PROGRESS"
+            ) ?? [];
+            if (pending.length === 0) return null;
+            return (
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ color: "var(--th-text-2)", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
+                  Pending Task Outputs
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {pending.map((task) => {
+                    const cfg = task.outputType ? OUTPUT_CONFIG[task.outputType] : null;
+                    if (!cfg) return null;
+                    const isOverdue = !!task.dueDate && new Date() > new Date(task.dueDate);
+                    return (
+                      <div key={task.id} style={{
+                        background: isOverdue ? "rgba(239,68,68,0.05)" : `color-mix(in srgb, ${cfg.color} 6%, var(--th-card))`,
+                        border: `1px solid ${isOverdue ? "rgba(239,68,68,0.2)" : `color-mix(in srgb, ${cfg.color} 25%, var(--th-border))`}`,
+                        borderRadius: 10, padding: "10px 14px",
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                      }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ color: "var(--th-text)", fontSize: 13, fontWeight: 600 }}>{task.title}</p>
+                          <div style={{ display: "flex", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
+                            <span style={{ color: isOverdue ? "#ef4444" : cfg.color, fontSize: 11, fontWeight: 600 }}>
+                              {cfg.label} required
+                            </span>
+                            {task.dueDate && (
+                              <span style={{ color: isOverdue ? "#ef4444" : "var(--th-text-2)", fontSize: 11 }}>
+                                · due {new Date(task.dueDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isOverdue ? (
+                          <span style={{ color: "#ef4444", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                            Locked
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => openTaskOutputUpload(task.id, task.outputType!)}
+                            disabled={uploadingOutputTaskId === task.id}
+                            style={{
+                              color: cfg.color,
+                              border: `1px solid color-mix(in srgb, ${cfg.color} 40%, transparent)`,
+                              background: `color-mix(in srgb, ${cfg.color} 10%, transparent)`,
+                              borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 600,
+                              cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                            }}
+                          >
+                            {uploadingOutputTaskId === task.id ? "Uploading…" : `Upload ${cfg.label}`}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="flex items-center justify-between mb-4">
             <p style={{ color: "var(--th-text-2)" }} className="text-xs">
               Upload documents, designs, or any files for this project.
@@ -1405,12 +1644,40 @@ export default function ProjectPage() {
 
             <div>
               <label style={{ color: "var(--th-text-2)" }} className="text-xs block mb-1">Due Date</label>
-              <input
-                type="date"
+              <DeadlinePicker
                 value={editState.dueDate}
-                onChange={(e) => setEditState((s) => s && { ...s, dueDate: e.target.value })}
-                className="nc-input"
+                onChange={(v) => setEditState((s) => s && { ...s, dueDate: v })}
+                placeholder="Pick a due date…"
               />
+            </div>
+
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <label style={{ color: "var(--th-text-2)" }} className="text-xs block">Required Output</label>
+                <span style={{ color: "var(--th-text-2)", fontSize: 10, background: "var(--th-bg)", border: "1px solid var(--th-border)", borderRadius: 4, padding: "1px 6px" }}>Optional</span>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {Object.entries(OUTPUT_CONFIG).map(([type, cfg]) => {
+                  const selected = editState.outputType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setEditState((s) => s && { ...s, outputType: selected ? "" : type })}
+                      style={{
+                        padding: "5px 12px", borderRadius: 8, cursor: "pointer",
+                        border: selected ? `1.5px solid ${cfg.color}` : "1.5px solid var(--th-border)",
+                        background: selected ? `color-mix(in srgb, ${cfg.color} 12%, transparent)` : "var(--th-bg)",
+                        color: selected ? cfg.color : "var(--th-text-2)",
+                        fontSize: 12, fontWeight: selected ? 700 : 500,
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {cfg.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -1422,6 +1689,75 @@ export default function ProjectPage() {
           </div>
         </div>
       )}
+
+      {/* Wrong file type error dialog */}
+      {outputFileError && (() => {
+        const cfg = OUTPUT_CONFIG[outputFileError.outputType];
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+            onClick={() => setOutputFileError(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 18, padding: "28px 28px 24px", width: "100%", maxWidth: 420, boxShadow: "0 24px 64px rgba(0,0,0,0.35)" }}
+            >
+              {/* Icon */}
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(239,68,68,0.1)", border: "1.5px solid rgba(239,68,68,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+
+              <h3 style={{ color: "var(--th-text)", fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Wrong file type</h3>
+              <p style={{ color: "var(--th-text-2)", fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+                You uploaded{" "}
+                <span style={{ color: "var(--th-text)", fontWeight: 600, wordBreak: "break-all" }}>
+                  {outputFileError.uploadedName}
+                </span>
+                , but this task requires a{" "}
+                <span style={{ color: cfg?.color ?? "var(--th-accent)", fontWeight: 700 }}>
+                  {cfg?.label ?? outputFileError.outputType}
+                </span>{" "}
+                file.
+              </p>
+
+              {/* Expected types */}
+              <div style={{ background: "var(--th-bg)", border: "1px solid var(--th-border)", borderRadius: 10, padding: "10px 14px", marginBottom: 20 }}>
+                <p style={{ color: "var(--th-text-2)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>
+                  Accepted formats
+                </p>
+                <p style={{ color: cfg?.color ?? "var(--th-accent)", fontSize: 12, fontWeight: 600 }}>
+                  {cfg?.exts.join(", ") ?? ""}
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setOutputFileError(null)}
+                  style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px solid var(--th-border)", background: "none", color: "var(--th-text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const { taskId, outputType } = outputFileError;
+                    setOutputFileError(null);
+                    // Re-open the file picker with the correct filter
+                    setTimeout(() => openTaskOutputUpload(taskId, outputType), 50);
+                  }}
+                  style={{ flex: 2, padding: "9px 0", borderRadius: 10, border: "none", background: cfg?.color ?? "var(--th-accent)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Always-mounted hidden input for task output uploads (works from any tab) */}
+      <input ref={taskOutputInputRef} type="file" className="hidden" onChange={handleTaskOutputUpload} />
     </div>
   );
 }

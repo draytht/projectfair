@@ -12,8 +12,8 @@ export async function GET() {
   const limits = PLAN_LIMITS[plan];
 
   const [courseCount, projectCount, sub] = await Promise.all([
-    prisma.course.count({ where: { ownerId: user.id } }),
-    prisma.project.count({ where: { ownerId: user.id } }),
+    prisma.course.count({ where: { ownerId: user.id, deletedAt: null } }),
+    prisma.project.count({ where: { ownerId: user.id, deletedAt: null } }),
     prisma.subscription.findUnique({
       where: { userId: user.id },
       select: { status: true, currentPeriodEnd: true, stripePriceId: true },
