@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { getUserPlan, PLAN_LIMITS } from "@/lib/plan";
 import { prisma } from "@/lib/prisma";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function GET() {
   const supabase = await createClient();
@@ -16,9 +19,18 @@ export async function GET() {
     prisma.project.count({ where: { ownerId: user.id, deletedAt: null } }),
     prisma.subscription.findUnique({
       where: { userId: user.id },
-      select: { status: true, currentPeriodEnd: true, stripePriceId: true },
+      select: { status: true, currentPeriodEnd: true, stripePriceId: true, stripeSubscriptionId: true },
     }),
   ]);
+
+  // Fetch cancel_at_period_end live from Stripe when there's an active subscription
+  let cancelAtPeriodEnd = false;
+  if (sub?.stripeSubscriptionId) {
+    try {
+      const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+      cancelAtPeriodEnd = stripeSub.cancel_at_period_end;
+    } catch { /* subscription may not exist yet */ }
+  }
 
   return NextResponse.json({
     plan,
@@ -27,5 +39,6 @@ export async function GET() {
     status: sub?.status ?? "active",
     currentPeriodEnd: sub?.currentPeriodEnd ?? null,
     stripePriceId: sub?.stripePriceId ?? null,
+    cancelAtPeriodEnd,
   });
 }

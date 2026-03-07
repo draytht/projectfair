@@ -162,7 +162,7 @@ export default function PricingPage() {
     <div style={{ background: "var(--th-bg)", color: "var(--th-text)", minHeight: "100vh" }}>
       {/* Nav */}
       <nav style={{ borderBottom: "1px solid var(--th-border)" }} className="flex items-center justify-between px-6 md:px-10 py-4">
-        <Link href="/" className="nc-brand">
+        <Link href={isLoggedIn ? "/dashboard" : "/"} className="nc-brand">
           <span className="nc-brand-dot" />
           <span className="nc-brand-text">No<span style={{ color: "var(--th-accent)" }}>Carry</span></span>
         </Link>

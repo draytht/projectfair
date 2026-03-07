@@ -11,6 +11,7 @@ type PlanData = {
   status: string;
   currentPeriodEnd: string | null;
   stripePriceId: string | null;
+  cancelAtPeriodEnd: boolean;
 };
 
 function UsageBar({ used, limit, accent }: { used: number; limit: number; accent?: boolean }) {
@@ -57,6 +58,8 @@ export default function PlanPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const searchParams = useSearchParams();
   const upgraded = searchParams.get("upgraded") === "1";
   const sessionId = searchParams.get("session_id");
@@ -123,6 +126,27 @@ export default function PlanPage() {
       setCheckoutError("Network error. Please try again.");
       setCheckoutLoading(false);
     }
+  }
+
+  async function handleCancel() {
+    setCancelLoading(true);
+    const res = await fetch("/api/stripe/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reactivate: false }) });
+    const d = await res.json();
+    if (res.ok) {
+      setData((prev) => prev ? { ...prev, cancelAtPeriodEnd: d.cancelAtPeriodEnd, currentPeriodEnd: d.currentPeriodEnd } : prev);
+      setCancelConfirm(false);
+    }
+    setCancelLoading(false);
+  }
+
+  async function handleReactivate() {
+    setCancelLoading(true);
+    const res = await fetch("/api/stripe/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reactivate: true }) });
+    const d = await res.json();
+    if (res.ok) {
+      setData((prev) => prev ? { ...prev, cancelAtPeriodEnd: d.cancelAtPeriodEnd } : prev);
+    }
+    setCancelLoading(false);
   }
 
   if (loading) return <p style={{ color: "var(--th-text-2)" }} className="text-sm p-8">Loading…</p>;
@@ -274,6 +298,75 @@ export default function PlanPage() {
           ))}
         </ul>
       </div>
+
+      {/* Cancel subscription — Pro only */}
+      {isPro && (
+        <div style={{ marginTop: 12, background: "var(--th-card)", border: "1px solid var(--th-border)", borderRadius: 14, padding: "18px 20px" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--th-text-2)", marginBottom: 12 }}>
+            Subscription
+          </p>
+
+          {data?.cancelAtPeriodEnd ? (
+            /* Already scheduled to cancel */
+            <div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 14, padding: "12px 14px", background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p style={{ fontSize: 12, color: "#f59e0b", margin: 0, lineHeight: 1.5 }}>
+                  Your Pro access ends on <strong>{data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "the end of this billing period"}</strong>. After that you&apos;ll be moved to the Free plan.
+                </p>
+              </div>
+              <button
+                onClick={handleReactivate}
+                disabled={cancelLoading}
+                style={{ width: "100%", padding: "10px 0", borderRadius: 10, border: "1.5px solid var(--th-accent)", background: "transparent", color: "var(--th-accent)", fontSize: 13, fontWeight: 600, cursor: cancelLoading ? "not-allowed" : "pointer", opacity: cancelLoading ? 0.6 : 1, transition: "background 0.15s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--th-accent) 8%, transparent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                {cancelLoading ? "Reactivating…" : "Reactivate Pro"}
+              </button>
+            </div>
+          ) : cancelConfirm ? (
+            /* Confirm step */
+            <div>
+              <p style={{ fontSize: 13, color: "var(--th-text-2)", marginBottom: 14, lineHeight: 1.5 }}>
+                You&apos;ll keep Pro access until <strong style={{ color: "var(--th-text)" }}>{data?.currentPeriodEnd ? new Date(data.currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "end of billing period"}</strong>. After that your plan downgrades to Free.
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setCancelConfirm(false)}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid var(--th-border)", background: "transparent", color: "var(--th-text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Keep Pro
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelLoading}
+                  style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.06)", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: cancelLoading ? "not-allowed" : "pointer", opacity: cancelLoading ? 0.6 : 1 }}
+                >
+                  {cancelLoading ? "Canceling…" : "Yes, cancel"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Default state */
+            <div>
+              <p style={{ fontSize: 12, color: "var(--th-text-2)", marginBottom: 12, lineHeight: 1.5 }}>
+                Canceling keeps your Pro access until the end of your current billing period, then downgrades to Free.
+              </p>
+              <button
+                onClick={() => setCancelConfirm(true)}
+                style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid rgba(239,68,68,0.3)", background: "none", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "background 0.14s, border-color 0.14s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.07)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.5)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)"; }}
+              >
+                Cancel subscription
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
