@@ -9,7 +9,7 @@ export async function GET() {
 
   try {
     const courses = await prisma.course.findMany({
-      where: { ownerId: user.id },
+      where: { ownerId: user.id, deletedAt: null },
       orderBy: { createdAt: "asc" },
     });
     return NextResponse.json(courses);

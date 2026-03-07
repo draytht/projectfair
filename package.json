@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.78.0",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
+    "@radix-ui/react-slot": "^1.2.4",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",
@@ -30,7 +31,9 @@
     "prisma": "^7.4.1",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
+    "react-day-picker": "^9.14.0",
     "react-dom": "19.2.3",
+    "stripe": "^20.4.1",
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.1"
   },

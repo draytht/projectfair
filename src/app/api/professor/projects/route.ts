@@ -13,6 +13,8 @@ export async function GET(req: Request) {
   try {
     const projects = await prisma.project.findMany({
       where: {
+        deletedAt: null,
+        status: { not: "DELETED" },
         courseCode: courseCode || undefined,
         members: {
           some: {
@@ -30,6 +32,8 @@ export async function GET(req: Request) {
     // Also include projects where professor is owner
     const ownedProjects = await prisma.project.findMany({
       where: {
+        deletedAt: null,
+        status: { not: "DELETED" },
         ownerId: user.id,
         courseCode: courseCode || undefined,
       },

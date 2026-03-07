@@ -7,9 +7,16 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { id: true, email: true, name: true, role: true, avatarUrl: true, preferredName: true },
-  });
-  return NextResponse.json(dbUser);
+  const [dbUser, sub] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, email: true, name: true, role: true, avatarUrl: true, preferredName: true },
+    }),
+    prisma.subscription.findUnique({
+      where: { userId: user.id },
+      select: { plan: true, status: true },
+    }),
+  ]);
+  const plan = (sub?.plan === "PRO" && (sub.status === "active" || sub.status === "trialing")) ? "PRO" : "FREE";
+  return NextResponse.json({ ...dbUser, plan });
 }

@@ -294,7 +294,9 @@ function MiniProjectCard({ project, isProfessor }: { project: ProjectStub; isPro
         borderRadius: 12,
         padding: "14px 14px 12px",
         textDecoration: "none",
-        display: "block",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 110,
         transition: "border-color 0.15s, transform 0.15s",
       }}
       className="nc-card-hover group"
@@ -302,6 +304,7 @@ function MiniProjectCard({ project, isProfessor }: { project: ProjectStub; isPro
       <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 8 }}>
         {project.name}
       </p>
+      <div style={{ flex: 1 }} />
       <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
         <span style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>{project.members.length} members</span>
         <span style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 600 }}>{progress}% done</span>
@@ -336,6 +339,9 @@ function UnlinkedCard({ project, onMove }: { project: ProjectStub; onMove: (p: P
         transform: hovered ? "translateY(-2px)" : "translateY(0)",
         transition: "border-color 0.15s, transform 0.18s cubic-bezier(0.16,1,0.3,1)",
         position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 140,
       }}
     >
       <p style={{ color: "var(--th-text-2)", fontSize: "0.625rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
@@ -344,6 +350,7 @@ function UnlinkedCard({ project, onMove }: { project: ProjectStub; onMove: (p: P
       <p style={{ color: "var(--th-text)", fontSize: "0.875rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 8 }}>
         {project.name}
       </p>
+      <div style={{ flex: 1 }} />
       <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
         <span style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>{project.members.length} members</span>
         <span style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 600 }}>{progress}%</span>
@@ -380,13 +387,25 @@ function CourseAccordion({
   unlinkedProjects,
   isProfessor,
   onLinkProject,
+  onDelete,
 }: {
   course: Course;
   unlinkedProjects: ProjectStub[];
   isProfessor: boolean;
   onLinkProject: (courseId: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Delete course "${course.name}"? It will be moved to Trash and can be restored.`)) return;
+    setDeleting(true);
+    const res = await fetch(`/api/courses/${course.id}`, { method: "DELETE" });
+    if (res.ok) onDelete(course.id);
+    else setDeleting(false);
+  }
 
   return (
     <div
@@ -449,7 +468,7 @@ function CourseAccordion({
       {open && (
         <div style={{ padding: "0 20px 20px", borderTop: "1px solid var(--th-border)" }}>
           {course.projects.length === 0 ? (
-            <div style={{ padding: "24px 0", textAlign: "center" }}>
+            <div style={{ padding: "24px 0 8px", textAlign: "center" }}>
               <p style={{ color: "var(--th-text-2)", fontSize: "0.8125rem", marginBottom: 12 }}>No projects linked to this course yet.</p>
               <button
                 onClick={() => onLinkProject(course.id)}
@@ -461,7 +480,7 @@ function CourseAccordion({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" style={{ marginTop: 16 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" style={{ marginTop: 16, alignItems: "stretch" }}>
                 {course.projects.map((p) => (
                   <MiniProjectCard key={p.id} project={p} isProfessor={isProfessor} />
                 ))}
@@ -484,6 +503,42 @@ function CourseAccordion({
               )}
             </>
           )}
+
+          {/* Delete course */}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--th-border)", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                background: "none",
+                border: "1px solid rgba(239,68,68,0.3)",
+                color: "#ef4444",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                padding: "6px 14px",
+                borderRadius: 8,
+                cursor: deleting ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                opacity: deleting ? 0.5 : 1,
+                transition: "background 0.14s, border-color 0.14s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+                e.currentTarget.style.borderColor = "rgba(239,68,68,0.5)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="2" y1="4" x2="13" y2="4" /><path d="M5.5 4V2.8h4V4" /><path d="M3.5 4l.7 8.5a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L11.5 4" />
+              </svg>
+              {deleting ? "Moving to Trash…" : "Move to Trash"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -492,12 +547,15 @@ function CourseAccordion({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
+type PlanData = { plan: "FREE" | "PRO"; limits: { courses: number }; usage: { courses: number } };
+
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [allUserProjects, setAllUserProjects] = useState<ProjectStub[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProfessor, setIsProfessor] = useState(false);
   const [showNewCourse, setShowNewCourse] = useState(false);
+  const [planData, setPlanData] = useState<PlanData | null>(null);
   const [linkingCourseId, setLinkingCourseId] = useState<string | null>(null);
   const [movingProject, setMovingProject] = useState<ProjectStub | null>(null);
 
@@ -506,10 +564,12 @@ export default function CoursesPage() {
       fetch("/api/courses").then((r) => r.ok ? r.json() : []),
       fetch("/api/projects").then((r) => r.ok ? r.json() : []),
       fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
-    ]).then(([c, p, me]) => {
+      fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null),
+    ]).then(([c, p, me, plan]) => {
       setCourses(Array.isArray(c) ? c : []);
       setAllUserProjects(Array.isArray(p) ? p : []);
       if (me?.role === "PROFESSOR") setIsProfessor(true);
+      if (plan) setPlanData(plan);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -566,13 +626,25 @@ export default function CoursesPage() {
             {courses.length} course{courses.length !== 1 ? "s" : ""} · {linkedProjectIds.size} linked project{linkedProjectIds.size !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => setShowNewCourse(true)}
-          className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95 cursor-pointer"
-          style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", flexShrink: 0 }}
-        >
-          + New Course
-        </button>
+        {planData && planData.usage.courses >= planData.limits.courses ? (
+          <Link
+            href="/dashboard/plan"
+            title={`${planData.plan === "FREE" ? "Upgrade to Pro" : "Plan limit reached"} — ${planData.usage.courses}/${planData.limits.courses} courses used`}
+            className="text-sm px-4 py-2 rounded-lg font-semibold transition"
+            style={{ background: "var(--th-border)", color: "var(--th-text-2)", textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            {planData.plan === "FREE" ? "Upgrade for more" : "Limit reached"}
+          </Link>
+        ) : (
+          <button
+            onClick={() => setShowNewCourse(true)}
+            className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95 cursor-pointer"
+            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", flexShrink: 0 }}
+          >
+            + New Course
+          </button>
+        )}
       </div>
 
       {/* Empty state */}
@@ -589,6 +661,7 @@ export default function CoursesPage() {
           >
             + Create your first course
           </button>
+
         </div>
       )}
 
@@ -602,6 +675,7 @@ export default function CoursesPage() {
               unlinkedProjects={unlinkedProjects}
               isProfessor={isProfessor}
               onLinkProject={(id) => setLinkingCourseId(id)}
+              onDelete={(id) => setCourses((prev) => prev.filter((c) => c.id !== id))}
             />
           ))}
         </div>
@@ -617,7 +691,7 @@ export default function CoursesPage() {
             </p>
             <div style={{ flex: 1, height: 1, background: "var(--th-border)" }} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style={{ alignItems: "stretch" }}>
             {unlinkedProjects.map((p) => (
               <UnlinkedCard key={p.id} project={p} onMove={setMovingProject} />
             ))}

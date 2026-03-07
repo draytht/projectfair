@@ -38,7 +38,7 @@ const SHORTCUTS: ShortcutDef[] = [
   { keys: [{ mac: "⌘", other: "Ctrl" }, "↵"], combo: true, label: "Chat → Send message" },
 ];
 
-type Category = "appearance" | "effects" | "account" | "support";
+type Category = "appearance" | "effects" | "account" | "support" | "features";
 type SupportView = "menu" | "feedback" | "bug";
 
 // ── Reusable input style ──────────────────────────────────────────────────────
@@ -321,6 +321,7 @@ export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean;
     { id: "appearance", label: "Appearance", icon: <PaletteIcon /> },
     { id: "effects",    label: "Effects",    icon: <SparkleIcon /> },
     { id: "account",    label: "Account",    icon: <UserIcon /> },
+    { id: "features",   label: "Features",   icon: <ListIcon /> },
     { id: "support",    label: "Support",    icon: <LifebuoyIcon /> },
   ];
 
@@ -467,6 +468,106 @@ export function SettingsModal({ open, onClose, openShortcuts }: { open: boolean;
               </div>
             )}
 
+            {/* ── Features ── */}
+            {cat === "features" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {([
+                  {
+                    label: "Projects",
+                    icon: <FolderIcon />,
+                    items: [
+                      { name: "Kanban Board", desc: "Drag-and-drop task columns (Todo, In Progress, Done)" },
+                      { name: "Task Management", desc: "Create, assign, and track tasks with due dates" },
+                      { name: "Output Files", desc: "Attach and manage deliverables per project" },
+                      { name: "Deadline Countdown", desc: "Live countdown timer for project deadlines" },
+                      { name: "Archive & Trash", desc: "Soft-delete with archive for completed projects" },
+                    ],
+                  },
+                  {
+                    label: "Courses",
+                    icon: <BookIcon />,
+                    items: [
+                      { name: "Course Management", desc: "Organize projects under course namespaces" },
+                      { name: "Project Linking", desc: "Link projects directly to courses" },
+                      { name: "Course Archive", desc: "Archive old courses without losing data" },
+                    ],
+                  },
+                  {
+                    label: "Team",
+                    icon: <TeamIcon />,
+                    items: [
+                      { name: "Team Invites", desc: "Invite teammates via link or email" },
+                      { name: "Roles & Permissions", desc: "Owner, member, and professor roles" },
+                      { name: "Real-time Chat", desc: "In-project messaging with reactions and image uploads" },
+                      { name: "File Uploads", desc: "Share files directly in project chat" },
+                    ],
+                  },
+                  {
+                    label: "Contributions & Reviews",
+                    icon: <StarIcon />,
+                    items: [
+                      { name: "Individual Scoring", desc: "Rate each member's real contribution" },
+                      { name: "Peer Reviews", desc: "Anonymous peer-to-peer review system" },
+                      { name: "AI Reports", desc: "AI-generated contribution summaries per member" },
+                      { name: "Freeloader Detection", desc: "Flags members with low contribution scores" },
+                      { name: "Activity History", desc: "Full log of project events and changes" },
+                    ],
+                  },
+                  {
+                    label: "Professor Tools",
+                    icon: <ProfIcon />,
+                    items: [
+                      { name: "Monitor Dashboard", desc: "Overview of all groups in a course" },
+                      { name: "Anomaly Flags", desc: "Highlights unusual contribution patterns" },
+                      { name: "Grade Adjustments", desc: "Override individual grades based on contribution" },
+                    ],
+                  },
+                  {
+                    label: "Account",
+                    icon: <UserIcon />,
+                    items: [
+                      { name: "Profile", desc: "Set your display name, bio, and links" },
+                      { name: "Avatar", desc: "Upload a custom profile picture" },
+                      { name: "Status", desc: "Set your current availability status" },
+                      { name: "Change Password", desc: "Update your login credentials" },
+                    ],
+                  },
+                  {
+                    label: "App",
+                    icon: <AppIcon />,
+                    items: [
+                      { name: "7 Themes", desc: "Dark, Light, Gruvbox, Nord, Tokyo Night, Dracula, Catppuccin" },
+                      { name: "Keyboard Shortcuts", desc: "Full set of navigation and action shortcuts" },
+                      { name: "Click Sounds", desc: "Mechanical keyboard sound feedback" },
+                      { name: "Cursor Glow", desc: "Ambient glow effect that follows the cursor" },
+                      { name: "Free / Pro Plans", desc: "Free tier + Pro plan with Stripe billing" },
+                      { name: "Auto Scaling", desc: "Responsive layout across all screen sizes" },
+                    ],
+                  },
+                ] as { label: string; icon: React.ReactNode; items: { name: string; desc: string }[] }[]).map((section) => (
+                  <div key={section.label}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{ color: "var(--th-accent)", display: "flex" }}>{section.icon}</span>
+                      <p style={{ color: "var(--th-text)", fontSize: 12, fontWeight: 700, margin: 0 }}>{section.label}</p>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: 10, overflow: "hidden", border: "1px solid var(--th-border)" }}>
+                      {section.items.map((item, i) => (
+                        <div key={item.name} style={{ display: "flex", alignItems: "flex-start", gap: 10,
+                          padding: "9px 12px", background: "var(--th-bg)",
+                          borderBottom: i < section.items.length - 1 ? "1px solid var(--th-border)" : "none" }}>
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--th-accent)", flexShrink: 0, marginTop: 5 }} />
+                          <div>
+                            <p style={{ color: "var(--th-text)", fontSize: 12, fontWeight: 600, margin: 0 }}>{item.name}</p>
+                            <p style={{ color: "var(--th-text-2)", fontSize: 11, margin: "2px 0 0" }}>{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* ── Support ── */}
             {cat === "support" && (
               <>
@@ -564,3 +665,10 @@ function MessageIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" 
 function DocIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>; }
 function ShieldIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>; }
 function BugIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg>; }
+function ListIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>; }
+function FolderIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>; }
+function BookIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>; }
+function TeamIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>; }
+function StarIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>; }
+function ProfIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>; }
+function AppIcon() { return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>; }

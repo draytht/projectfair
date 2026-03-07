@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -41,6 +42,34 @@ export async function PATCH(request: Request) {
     return NextResponse.json(updated);
   } catch (err) {
     console.error("[PATCH /api/profile]", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    // Delete all user data from the DB (cascades to related records)
+    await prisma.user.delete({ where: { id: user.id } });
+
+    // Delete the auth user via Supabase admin client
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const { error: authDeleteError } = await admin.auth.admin.deleteUser(user.id);
+    if (authDeleteError) {
+      console.error("[DELETE /api/profile] auth delete error:", authDeleteError.message);
+      // DB is already cleaned; best-effort sign-out anyway
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[DELETE /api/profile]", err);
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
