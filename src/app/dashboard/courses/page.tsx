@@ -294,7 +294,9 @@ function MiniProjectCard({ project, isProfessor }: { project: ProjectStub; isPro
         borderRadius: 12,
         padding: "14px 14px 12px",
         textDecoration: "none",
-        display: "block",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
         transition: "border-color 0.15s, transform 0.15s",
       }}
       className="nc-card-hover group"
@@ -302,6 +304,7 @@ function MiniProjectCard({ project, isProfessor }: { project: ProjectStub; isPro
       <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 8 }}>
         {project.name}
       </p>
+      <div style={{ flex: 1 }} />
       <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
         <span style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>{project.members.length} members</span>
         <span style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 600 }}>{progress}% done</span>
@@ -336,6 +339,9 @@ function UnlinkedCard({ project, onMove }: { project: ProjectStub; onMove: (p: P
         transform: hovered ? "translateY(-2px)" : "translateY(0)",
         transition: "border-color 0.15s, transform 0.18s cubic-bezier(0.16,1,0.3,1)",
         position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
       }}
     >
       <p style={{ color: "var(--th-text-2)", fontSize: "0.625rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
@@ -344,6 +350,7 @@ function UnlinkedCard({ project, onMove }: { project: ProjectStub; onMove: (p: P
       <p style={{ color: "var(--th-text)", fontSize: "0.875rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 8 }}>
         {project.name}
       </p>
+      <div style={{ flex: 1 }} />
       <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
         <span style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>{project.members.length} members</span>
         <span style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 600 }}>{progress}%</span>

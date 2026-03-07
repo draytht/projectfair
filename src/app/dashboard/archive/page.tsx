@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { sounds } from "@/lib/sounds";
 
 type ArchivedProject = {
   id: string;
@@ -48,6 +49,7 @@ export default function ArchivePage() {
       body: JSON.stringify({ status: "ACTIVE" }),
     });
     if (res.ok) {
+      sounds.restore();
       setProjects((prev) => prev.filter((p) => p.id !== id));
     }
     setRestoring(null);

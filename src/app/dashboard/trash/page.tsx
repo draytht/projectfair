@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { sounds } from "@/lib/sounds";
 
 type TrashedProject = {
   id: string;
@@ -61,7 +62,7 @@ export default function TrashPage() {
   async function restoreProject(id: string) {
     setWorking(id);
     const res = await fetch(`/api/trash/projects/${id}`, { method: "PATCH" });
-    if (res.ok) setProjects((prev) => prev.filter((p) => p.id !== id));
+    if (res.ok) { sounds.restore(); setProjects((prev) => prev.filter((p) => p.id !== id)); }
     setWorking(null);
   }
 
@@ -76,7 +77,7 @@ export default function TrashPage() {
   async function restoreCourse(id: string) {
     setWorking(id);
     const res = await fetch(`/api/trash/courses/${id}`, { method: "PATCH" });
-    if (res.ok) setCourses((prev) => prev.filter((c) => c.id !== id));
+    if (res.ok) { sounds.restore(); setCourses((prev) => prev.filter((c) => c.id !== id)); }
     setWorking(null);
   }
 

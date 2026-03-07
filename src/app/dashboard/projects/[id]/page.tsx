@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { sounds } from "@/lib/sounds";
 import ProjectChat from "./_components/ProjectChat";
 import { DeadlinePicker } from "@/components/ui/deadline-picker";
 
@@ -327,6 +328,8 @@ export default function ProjectPage() {
         : prev
     );
 
+    if (newStatus === "DONE") sounds.complete();
+
     await fetch(`/api/projects/${id}/tasks/${task.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -528,6 +531,7 @@ export default function ProjectPage() {
 
   async function markProjectDone() {
     if (!confirm("Mark this project as complete? It will move to your Archive.")) return;
+    sounds.complete();
     setDangerWorking(true);
     const res = await fetch(`/api/projects/${id}`, {
       method: "PATCH",
@@ -540,6 +544,7 @@ export default function ProjectPage() {
 
   async function deleteProject() {
     if (!confirm("Delete this project? It will be moved to Trash and can be restored within 30 days.")) return;
+    sounds.trash();
     setDangerWorking(true);
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     if (res.ok) router.push("/dashboard/projects");

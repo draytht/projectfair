@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, useAnimation } from "framer-motion";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -67,31 +68,69 @@ function IconPlan() {
   );
 }
 
-function IconArchive() {
-  // Box drops down on hover
+function ArchiveNavLink({ active }: { active: boolean }) {
+  const controls = useAnimation();
+  function handleMouseEnter() {
+    controls.start({
+      y: [0, -3, 0],
+      transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+    });
+  }
   return (
-    <span className="nc-nav-icon nc-nav-icon-drop" style={{ width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="1" y="3.5" width="13" height="2" rx="0.8" />
-        <rect x="1.5" y="5.5" width="12" height="8" rx="1" />
-        <line x1="5.5" y1="9.5" x2="9.5" y2="9.5" />
-      </svg>
-    </span>
+    <Link
+      href="/dashboard/archive"
+      title="Archive"
+      className="nc-nav-link"
+      style={active ? { color: "var(--th-accent)", background: "color-mix(in srgb, var(--th-accent) 12%, transparent)" } : {}}
+      onMouseEnter={handleMouseEnter}
+    >
+      <motion.span
+        className="nc-nav-icon"
+        style={{ width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center" }}
+        animate={controls}
+      >
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="3.5" width="13" height="2" rx="0.8" />
+          <rect x="1.5" y="5.5" width="12" height="8" rx="1" />
+          <line x1="5.5" y1="9.5" x2="9.5" y2="9.5" />
+        </svg>
+      </motion.span>
+      <span className="nc-sidebar-reveal">Archive</span>
+    </Link>
   );
 }
 
-function IconTrash() {
-  // Shakes/rattles on hover
+function TrashNavLink({ active }: { active: boolean }) {
+  const controls = useAnimation();
+  function handleMouseEnter() {
+    controls.start({
+      rotate: [0, -9, 7, 0],
+      transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+    });
+  }
   return (
-    <span className="nc-nav-icon nc-nav-icon-shake" style={{ width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="2" y1="4" x2="13" y2="4" />
-        <path d="M5.5 4V2.8h4V4" />
-        <path d="M3.5 4l.7 8.5a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L11.5 4" />
-        <line x1="6" y1="7" x2="6" y2="10.5" />
-        <line x1="9" y1="7" x2="9" y2="10.5" />
-      </svg>
-    </span>
+    <Link
+      href="/dashboard/trash"
+      title="Trash"
+      className="nc-nav-link"
+      style={active ? { color: "var(--th-accent)", background: "color-mix(in srgb, var(--th-accent) 12%, transparent)" } : {}}
+      onMouseEnter={handleMouseEnter}
+    >
+      <motion.span
+        className="nc-nav-icon"
+        style={{ width: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center" }}
+        animate={controls}
+      >
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="2" y1="4" x2="13" y2="4" />
+          <path d="M5.5 4V2.8h4V4" />
+          <path d="M3.5 4l.7 8.5a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L11.5 4" />
+          <line x1="6" y1="7" x2="6" y2="10.5" />
+          <line x1="9" y1="7" x2="9" y2="10.5" />
+        </svg>
+      </motion.span>
+      <span className="nc-sidebar-reveal">Trash</span>
+    </Link>
   );
 }
 
@@ -135,8 +174,8 @@ export function NavLinks({ role }: { role: string }) {
       {navLink("/dashboard/courses",  "My Courses",  <IconCourses />)}
       {navLink("/dashboard/projects", "My Projects", <IconProjects />)}
       {navLink("/dashboard/plan",     "Plan",        <IconPlan />)}
-      {navLink("/dashboard/archive",  "Archive",     <IconArchive />)}
-      {navLink("/dashboard/trash",    "Trash",       <IconTrash />)}
+      <ArchiveNavLink active={isActive("/dashboard/archive")} />
+      <TrashNavLink  active={isActive("/dashboard/trash")} />
     </>
   );
 }

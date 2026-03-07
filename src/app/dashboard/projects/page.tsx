@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectDeadlineBadge } from "./_components/ProjectDeadlineBadge";
+import { sounds } from "@/lib/sounds";
 
 type Member = { userId: string; role: string; user: { id: string; name: string } };
 type Project = {
@@ -47,20 +48,20 @@ function ProjectCard({
     if (!confirm(`Move "${project.name}" to Trash? You can restore it later.`)) return;
     setDeleting(true);
     const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
-    if (res.ok) onDeleted(project.id);
+    if (res.ok) { sounds.trash(); onDeleted(project.id); }
     else setDeleting(false);
   }
 
   return (
     <div
-      style={{ position: "relative" }}
+      style={{ position: "relative", height: "100%" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <Link
         href={`/dashboard/projects/${project.id}`}
-        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)" }}
-        className="block p-6 rounded-xl nc-card-hover group"
+        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", height: "100%" }}
+        className="p-6 rounded-xl nc-card-hover group"
       >
         {project.courseCode && (
           <p style={{ color: "var(--th-accent)" }} className="text-xs font-medium uppercase tracking-widest mb-1">
@@ -78,7 +79,7 @@ function ProjectCard({
             {project.description}
           </p>
         )}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between" style={{ marginTop: "auto", paddingTop: 16 }}>
           <p style={{ color: "var(--th-text-2)" }} className="text-xs">
             {project.members.length} member{project.members.length !== 1 ? "s" : ""} · {project.tasks.length} task{project.tasks.length !== 1 ? "s" : ""}
           </p>
