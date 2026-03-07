@@ -7,6 +7,8 @@ import { DeadlinePicker } from "@/components/ui/deadline-picker";
 
 type Course = { id: string; name: string; code: string };
 
+type PlanData = { plan: "FREE" | "PRO"; limits: { projects: number }; usage: { projects: number } };
+
 export default function NewProjectPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -16,9 +18,18 @@ export default function NewProjectPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/courses").then((r) => r.ok ? r.json() : []).then((c) => setCourses(Array.isArray(c) ? c : []));
+    Promise.all([
+      fetch("/api/courses").then((r) => r.ok ? r.json() : []),
+      fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null),
+    ]).then(([c, plan]) => {
+      setCourses(Array.isArray(c) ? c : []);
+      if (plan) setPlanData(plan);
+      setPlanLoading(false);
+    });
   }, []);
 
   async function handleCreate() {
@@ -53,6 +64,41 @@ export default function NewProjectPage() {
     color: "var(--th-text)", borderRadius: 10, padding: "9px 12px",
     fontSize: 14, outline: "none",
   };
+
+  const atLimit = !planLoading && planData !== null && planData.usage.projects >= planData.limits.projects;
+
+  if (atLimit) {
+    return (
+      <div className="max-w-lg mx-auto" style={{ paddingTop: 40, textAlign: "center" }}>
+        <div style={{ fontSize: 36, marginBottom: 16 }}>🔒</div>
+        <h2 style={{ color: "var(--th-text)", fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Project limit reached</h2>
+        <p style={{ color: "var(--th-text-2)", fontSize: 13, marginBottom: 6 }}>
+          You&apos;ve used {planData!.usage.projects} of {planData!.limits.projects} projects on the <strong>{planData!.plan === "FREE" ? "Free" : "Pro"}</strong> plan.
+        </p>
+        {planData!.plan === "FREE" && (
+          <p style={{ color: "var(--th-text-2)", fontSize: 13, marginBottom: 28 }}>
+            Upgrade to Pro for up to {20} projects.
+          </p>
+        )}
+        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+          <Link
+            href="/dashboard/projects"
+            style={{ padding: "9px 20px", borderRadius: 10, border: "1px solid var(--th-border)", color: "var(--th-text-2)", textDecoration: "none", fontSize: 13, fontWeight: 600 }}
+          >
+            ← Back
+          </Link>
+          {planData!.plan === "FREE" && (
+            <Link
+              href="/dashboard/plan"
+              style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: "var(--th-accent)", color: "var(--th-accent-fg)", textDecoration: "none", fontSize: 13, fontWeight: 700 }}
+            >
+              Upgrade to Pro →
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto">

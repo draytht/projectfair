@@ -54,13 +54,13 @@ function ProjectCard({
 
   return (
     <div
-      style={{ position: "relative", height: "100%" }}
+      style={{ position: "relative", display: "flex", flexDirection: "column", minHeight: 164 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <Link
         href={`/dashboard/projects/${project.id}`}
-        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", height: "100%" }}
+        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", flex: 1 }}
         className="p-6 rounded-xl nc-card-hover group"
       >
         {project.courseCode && (
@@ -138,18 +138,23 @@ function ProjectCard({
   );
 }
 
+type PlanData = { plan: "FREE" | "PRO"; limits: { projects: number }; usage: { projects: number } };
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [planData, setPlanData] = useState<PlanData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/projects").then((r) => r.json()),
       fetch("/api/auth/me").then((r) => r.json()),
-    ]).then(([proj, me]) => {
+      fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null),
+    ]).then(([proj, me, plan]) => {
       if (Array.isArray(proj)) setProjects(proj);
       if (me?.id) setCurrentUserId(me.id);
+      if (plan) setPlanData(plan);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -183,15 +188,32 @@ export default function ProjectsPage() {
           <h2 className="nc-page-title">My Projects</h2>
           <p style={{ color: "var(--th-text-2)" }} className="text-xs mt-1">
             {projects.length} active project{projects.length !== 1 ? "s" : ""}
+            {planData && (
+              <span style={{ marginLeft: 6, opacity: 0.6 }}>
+                · {planData.usage.projects}/{planData.limits.projects} used
+              </span>
+            )}
           </p>
         </div>
-        <Link
-          href="/dashboard/projects/new"
-          className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95"
-          style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", textDecoration: "none", flexShrink: 0 }}
-        >
-          + New Project
-        </Link>
+        {planData && planData.usage.projects >= planData.limits.projects ? (
+          <Link
+            href="/dashboard/plan"
+            title={`${planData.plan === "FREE" ? "Upgrade to Pro" : "Plan limit reached"} — ${planData.usage.projects}/${planData.limits.projects} projects used`}
+            className="text-sm px-4 py-2 rounded-lg font-semibold transition"
+            style={{ background: "var(--th-border)", color: "var(--th-text-2)", textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            {planData.plan === "FREE" ? "Upgrade for more" : "Limit reached"}
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/projects/new"
+            className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95"
+            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", textDecoration: "none", flexShrink: 0 }}
+          >
+            + New Project
+          </Link>
+        )}
       </div>
 
       {projects.length === 0 ? (
@@ -200,7 +222,7 @@ export default function ProjectsPage() {
           <p style={{ color: "var(--th-text-2)" }} className="text-sm">Create one or ask your team leader to invite you.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style={{ alignItems: "stretch" }}>
           {projects.map((project) => {
             const myMembership = project.members.find((m) => m.userId === currentUserId);
             const isLeader = myMembership?.role === "TEAM_LEADER";

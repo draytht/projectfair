@@ -1,8 +1,8 @@
 import { prisma } from "./prisma";
 
 export const PLAN_LIMITS = {
-  FREE: { courses: 1, projects: 1 },
-  PRO:  { courses: 5, projects: 5 },
+  FREE: { courses: 2, projects: 2 },
+  PRO:  { courses: 20, projects: 20 },
 } as const;
 
 export type PlanName = keyof typeof PLAN_LIMITS;
@@ -37,7 +37,8 @@ export async function checkCourseLimit(userId: string): Promise<{ allowed: boole
 export async function checkProjectLimit(userId: string): Promise<{ allowed: boolean; message?: string }> {
   const plan = await getUserPlan(userId);
   const limit = PLAN_LIMITS[plan].projects;
-  const count = await prisma.project.count({ where: { ownerId: userId, deletedAt: null } });
+  // Only count ACTIVE projects — archived/deleted don't consume the quota
+  const count = await prisma.project.count({ where: { ownerId: userId, status: "ACTIVE" } });
   if (count >= limit) {
     return {
       allowed: false,

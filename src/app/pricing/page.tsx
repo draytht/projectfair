@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const MONTHLY_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID ?? "";
-const ANNUAL_PRICE_ID  = process.env.NEXT_PUBLIC_STRIPE_PRO_ANNUAL_PRICE_ID  ?? "";
-
 type AuthState = { loading: true } | { loading: false; userId: string | null; plan: "FREE" | "PRO" | null };
+type Prices = { monthly: string; annual: string } | null;
 
 const FEATURES = [
-  { label: "Courses",               free: "1",          pro: "5" },
-  { label: "Projects",              free: "1",          pro: "5" },
+  { label: "Courses",               free: "2",          pro: "20" },
+  { label: "Projects",              free: "2",          pro: "20" },
   { label: "Kanban task board",     free: true,         pro: true },
   { label: "Peer review system",    free: true,         pro: true },
   { label: "Contribution scoring",  free: true,         pro: true },
@@ -28,7 +26,7 @@ const FAQ = [
   },
   {
     q: "What happens if I downgrade or cancel?",
-    a: "You keep Pro access until the end of your billing period. After that, you're back on Free. Your courses and projects are preserved; you just can't create new ones beyond the Free limits.",
+    a: "You keep Pro access until the end of your billing period. After that, you're back on Free (2 courses, 2 projects). Your existing courses and projects are preserved — you just can't create new ones beyond the Free limits.",
   },
   {
     q: "Can professors use Pro?",
@@ -63,31 +61,48 @@ function Cross() {
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ loading: true });
+  const [prices, setPrices] = useState<Prices>(null);
   const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.ok ? r.json() : null)
-      .then(async (me) => {
-        if (!me?.id) { setAuth({ loading: false, userId: null, plan: null }); return; }
-        const sub = await fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null);
-        setAuth({ loading: false, userId: me.id, plan: sub?.plan ?? "FREE" });
-      })
-      .catch(() => setAuth({ loading: false, userId: null, plan: null }));
+    Promise.all([
+      fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
+      fetch("/api/stripe/prices").then((r) => r.ok ? r.json() : null),
+    ]).then(async ([me, p]) => {
+      if (p?.monthly) setPrices(p);
+      if (!me?.id) { setAuth({ loading: false, userId: null, plan: null }); return; }
+      const sub = await fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null);
+      setAuth({ loading: false, userId: me.id, plan: sub?.plan ?? "FREE" });
+    }).catch(() => setAuth({ loading: false, userId: null, plan: null }));
   }, []);
 
   async function startCheckout(priceId: string) {
+    setCheckoutError("");
+    if (!priceId) {
+      setCheckoutError("Stripe is not configured yet. Contact support.");
+      return;
+    }
     setLoadingCheckout(true);
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId }),
-    });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-    else setLoadingCheckout(false);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setCheckoutError(data.error ?? "Checkout failed. Please try again.");
+        setLoadingCheckout(false);
+      }
+    } catch {
+      setCheckoutError("Network error. Please try again.");
+      setLoadingCheckout(false);
+    }
   }
 
   async function openPortal() {
@@ -126,14 +141,20 @@ export default function PricingPage() {
         </button>
       );
     }
+    const priceId = annual ? prices?.annual : prices?.monthly;
     return (
-      <button
-        onClick={() => startCheckout(annual ? ANNUAL_PRICE_ID : MONTHLY_PRICE_ID)}
-        disabled={loadingCheckout}
-        style={{ width: "100%", background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: loadingCheckout ? 0.6 : 1 }}
-      >
-        {loadingCheckout ? "Redirecting…" : "Upgrade to Pro"}
-      </button>
+      <>
+        <button
+          onClick={() => startCheckout(priceId ?? "")}
+          disabled={loadingCheckout || !prices}
+          style={{ width: "100%", background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 14, cursor: (loadingCheckout || !prices) ? "not-allowed" : "pointer", opacity: (loadingCheckout || !prices) ? 0.6 : 1 }}
+        >
+          {loadingCheckout ? "Redirecting…" : !prices ? "Loading…" : `Upgrade to Pro — ${annual ? "$59/yr" : "$7/mo"}`}
+        </button>
+        {checkoutError && (
+          <p style={{ fontSize: 12, color: "#ef4444", textAlign: "center", marginTop: 6, lineHeight: 1.4 }}>{checkoutError}</p>
+        )}
+      </>
     );
   }
 
@@ -208,8 +229,8 @@ export default function PricingPage() {
               </Link>
             )}
             <ul style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
-              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--th-text-2)" }}><Check />1 course</li>
-              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--th-text-2)" }}><Check />1 project</li>
+              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--th-text-2)" }}><Check />2 courses</li>
+              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--th-text-2)" }}><Check />2 projects</li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--th-text-2)" }}><Check />All core features</li>
             </ul>
           </div>
@@ -241,8 +262,8 @@ export default function PricingPage() {
             </div>
             {renderProCTA()}
             <ul style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
-              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 5 courses</li>
-              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 5 projects</li>
+              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 20 courses</li>
+              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 20 projects</li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />All core features</li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Priority support</li>
             </ul>

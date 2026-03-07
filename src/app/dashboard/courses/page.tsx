@@ -296,7 +296,7 @@ function MiniProjectCard({ project, isProfessor }: { project: ProjectStub; isPro
         textDecoration: "none",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
+        minHeight: 110,
         transition: "border-color 0.15s, transform 0.15s",
       }}
       className="nc-card-hover group"
@@ -341,7 +341,7 @@ function UnlinkedCard({ project, onMove }: { project: ProjectStub; onMove: (p: P
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
+        minHeight: 140,
       }}
     >
       <p style={{ color: "var(--th-text-2)", fontSize: "0.625rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
@@ -480,7 +480,7 @@ function CourseAccordion({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" style={{ marginTop: 16 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" style={{ marginTop: 16, alignItems: "stretch" }}>
                 {course.projects.map((p) => (
                   <MiniProjectCard key={p.id} project={p} isProfessor={isProfessor} />
                 ))}
@@ -547,12 +547,15 @@ function CourseAccordion({
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
+type PlanData = { plan: "FREE" | "PRO"; limits: { courses: number }; usage: { courses: number } };
+
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [allUserProjects, setAllUserProjects] = useState<ProjectStub[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProfessor, setIsProfessor] = useState(false);
   const [showNewCourse, setShowNewCourse] = useState(false);
+  const [planData, setPlanData] = useState<PlanData | null>(null);
   const [linkingCourseId, setLinkingCourseId] = useState<string | null>(null);
   const [movingProject, setMovingProject] = useState<ProjectStub | null>(null);
 
@@ -561,10 +564,12 @@ export default function CoursesPage() {
       fetch("/api/courses").then((r) => r.ok ? r.json() : []),
       fetch("/api/projects").then((r) => r.ok ? r.json() : []),
       fetch("/api/auth/me").then((r) => r.ok ? r.json() : null),
-    ]).then(([c, p, me]) => {
+      fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null),
+    ]).then(([c, p, me, plan]) => {
       setCourses(Array.isArray(c) ? c : []);
       setAllUserProjects(Array.isArray(p) ? p : []);
       if (me?.role === "PROFESSOR") setIsProfessor(true);
+      if (plan) setPlanData(plan);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -621,13 +626,25 @@ export default function CoursesPage() {
             {courses.length} course{courses.length !== 1 ? "s" : ""} · {linkedProjectIds.size} linked project{linkedProjectIds.size !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => setShowNewCourse(true)}
-          className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95 cursor-pointer"
-          style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", flexShrink: 0 }}
-        >
-          + New Course
-        </button>
+        {planData && planData.usage.courses >= planData.limits.courses ? (
+          <Link
+            href="/dashboard/plan"
+            title={`${planData.plan === "FREE" ? "Upgrade to Pro" : "Plan limit reached"} — ${planData.usage.courses}/${planData.limits.courses} courses used`}
+            className="text-sm px-4 py-2 rounded-lg font-semibold transition"
+            style={{ background: "var(--th-border)", color: "var(--th-text-2)", textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            {planData.plan === "FREE" ? "Upgrade for more" : "Limit reached"}
+          </Link>
+        ) : (
+          <button
+            onClick={() => setShowNewCourse(true)}
+            className="nc-btn-3d text-sm px-4 py-2 rounded-lg font-semibold hover:opacity-80 transition active:scale-95 cursor-pointer"
+            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)", border: "none", flexShrink: 0 }}
+          >
+            + New Course
+          </button>
+        )}
       </div>
 
       {/* Empty state */}
@@ -644,6 +661,7 @@ export default function CoursesPage() {
           >
             + Create your first course
           </button>
+
         </div>
       )}
 
@@ -673,7 +691,7 @@ export default function CoursesPage() {
             </p>
             <div style={{ flex: 1, height: 1, background: "var(--th-border)" }} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style={{ alignItems: "stretch" }}>
             {unlinkedProjects.map((p) => (
               <UnlinkedCard key={p.id} project={p} onMove={setMovingProject} />
             ))}

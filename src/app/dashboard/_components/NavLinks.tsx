@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
@@ -55,16 +56,49 @@ function IconCourses() {
   );
 }
 
-function IconPlan() {
-  // Diamond gem — pops on hover
+function PlanNavLink({ active }: { active: boolean }) {
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/stripe/plan")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.plan === "PRO") setIsPro(true); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function onUpgrade() { setIsPro(true); }
+    window.addEventListener("nc:plan-upgraded", onUpgrade);
+    return () => window.removeEventListener("nc:plan-upgraded", onUpgrade);
+  }, []);
+
   return (
-    <span className="nc-nav-icon nc-nav-icon-pop" style={{ width: 15, height: 15 }}>
-      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="7.5,1.5 13.5,5.5 7.5,13.5 1.5,5.5" />
-        <polyline points="1.5,5.5 7.5,7 13.5,5.5" />
-        <line x1="7.5" y1="1.5" x2="7.5" y2="7" />
-      </svg>
-    </span>
+    <Link
+      href="/dashboard/plan"
+      title="Plan"
+      className="nc-nav-link"
+      style={active ? { color: "var(--th-accent)", background: "color-mix(in srgb, var(--th-accent) 12%, transparent)" } : {}}
+    >
+      <span className="nc-nav-icon nc-nav-icon-pop" style={{ width: 15, height: 15 }}>
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="7.5,1.5 13.5,5.5 7.5,13.5 1.5,5.5" />
+          <polyline points="1.5,5.5 7.5,7 13.5,5.5" />
+          <line x1="7.5" y1="1.5" x2="7.5" y2="7" />
+        </svg>
+      </span>
+      <span className="nc-sidebar-reveal" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        Plan
+        {isPro && (
+          <span style={{
+            fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99,
+            background: "var(--th-accent)", color: "var(--th-accent-fg)",
+            letterSpacing: "0.05em", lineHeight: 1.5, textTransform: "uppercase",
+          }}>
+            PRO
+          </span>
+        )}
+      </span>
+    </Link>
   );
 }
 
@@ -173,7 +207,7 @@ export function NavLinks({ role }: { role: string }) {
       {navLink("/dashboard/profile",  "Profile",     <IconProfile />)}
       {navLink("/dashboard/courses",  "My Courses",  <IconCourses />)}
       {navLink("/dashboard/projects", "My Projects", <IconProjects />)}
-      {navLink("/dashboard/plan",     "Plan",        <IconPlan />)}
+      <PlanNavLink active={isActive("/dashboard/plan")} />
       <ArchiveNavLink active={isActive("/dashboard/archive")} />
       <TrashNavLink  active={isActive("/dashboard/trash")} />
     </>
