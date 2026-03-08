@@ -28,6 +28,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     cancelAtPeriodEnd: updated.cancel_at_period_end,
-    currentPeriodEnd: new Date(updated.current_period_end * 1000).toISOString(),
+    currentPeriodEnd: new Date((updated as any).current_period_end * 1000).toISOString(),
   });
 }
