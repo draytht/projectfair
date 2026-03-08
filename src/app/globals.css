@@ -913,6 +913,25 @@ button, a, [role="button"] { touch-action: manipulation; }
   pointer-events: none;
 }
 
+/* ── Pro badge ─────────────────────────────────────────────────── */
+@keyframes nc-pro-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+@keyframes nc-pro-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(251,191,36,0.35), 0 0 0 1px rgba(217,119,6,0.25); }
+  50%       { box-shadow: 0 0 10px rgba(251,191,36,0.65), 0 0 0 1px rgba(251,191,36,0.4); }
+}
+.nc-pro-badge {
+  background: linear-gradient(105deg, #d97706, #fbbf24, #fde68a, #fbbf24, #d97706);
+  background-size: 300% auto;
+  animation: nc-pro-shimmer 2.5s linear infinite, nc-pro-glow 2s ease-in-out infinite;
+}
+@media (pointer: coarse) {
+  @keyframes nc-pro-shimmer { 100% { background-position: 0% center; } }
+  @keyframes nc-pro-glow    { 100% { box-shadow: 0 0 4px rgba(251,191,36,0.35); } }
+}
+
 /* ── Theme variables ───────────────────────────────────────────── */
 [data-theme="dark"] {
   --th-bg:         #0d0d0d;

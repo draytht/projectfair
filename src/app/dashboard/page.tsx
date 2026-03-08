@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
+import { ProBadge } from "@/components/ui/pro-badge";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data fetching
@@ -18,6 +19,14 @@ export default async function DashboardPage() {
 
   const displayName = dbUser.preferredName || dbUser.name;
   const role = dbUser.role;
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId: user.id },
+    select: { plan: true, status: true },
+  });
+  const isPro =
+    subscription?.plan === "PRO" &&
+    (subscription?.status === "active" || subscription?.status === "trialing");
 
   // Courses (all roles)
   const courses = await prisma.course.findMany({
@@ -53,6 +62,7 @@ export default async function DashboardPage() {
       <Dashboard
         name={displayName}
         role={role}
+        isPro={isPro ?? false}
         courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, projectCount: c.projects.length }))}
         stats={[
           { label: "Projects", value: projects.length, href: "/dashboard/projects" },
@@ -106,6 +116,7 @@ export default async function DashboardPage() {
       <Dashboard
         name={displayName}
         role={role}
+        isPro={isPro ?? false}
         courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, projectCount: c.projects.length }))}
         stats={[
           { label: "Projects", value: projects.length, href: "/dashboard/projects" },
@@ -150,11 +161,12 @@ type ProjectItem = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Dashboard({
-  name, role, courses, stats, totalTasks, doneTasks,
+  name, role, isPro = false, courses, stats, totalTasks, doneTasks,
   assignedTasks = [], recentProjects = [], flagged = [],
 }: {
   name: string;
   role: string;
+  isPro?: boolean;
   courses: CourseSummary[];
   stats: StatItem[];
   totalTasks: number;
@@ -195,6 +207,7 @@ function Dashboard({
               }}>
                 {roleLabel}
               </span>
+              {isPro && <ProBadge size="md" />}
               {totalTasks > 0 && (
                 <span style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }}>
                   {completionPct}% of tasks complete

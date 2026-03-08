@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
+import { ProBadge } from "@/components/ui/pro-badge";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -87,16 +88,8 @@ function PlanNavLink({ active }: { active: boolean }) {
         </svg>
       </span>
       <span className="nc-sidebar-reveal" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        Plan
-        {isPro && (
-          <span style={{
-            fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 99,
-            background: "var(--th-accent)", color: "var(--th-accent-fg)",
-            letterSpacing: "0.05em", lineHeight: 1.5, textTransform: "uppercase",
-          }}>
-            PRO
-          </span>
-        )}
+        My Plan
+        {isPro && <ProBadge />}
       </span>
     </Link>
   );

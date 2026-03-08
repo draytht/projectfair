@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { NavLinks } from "./NavLinks";
 import { SettingsModal } from "./SettingsModal";
 import { HomePanel } from "./HomePanel";
+import { ProBadge } from "@/components/ui/pro-badge";
 
 function initials(name: string) {
   const parts = name.trim().split(" ");
@@ -44,10 +45,12 @@ export function Sidebar({
   role,
   name,
   avatarUrl,
+  isPro = false,
 }: {
   role: string;
   name: string;
   avatarUrl: string | null;
+  isPro?: boolean;
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openShortcuts, setOpenShortcuts] = useState(false);
@@ -169,7 +172,10 @@ export function Sidebar({
           >
             <Avatar url={avatarUrl} name={name} size={28} />
             <div className="nc-sidebar-reveal-block" style={{ minWidth: 0 }}>
-              <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 500 }} className="truncate">{name}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 500 }} className="truncate">{name}</p>
+                {isPro && <ProBadge />}
+              </div>
               <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem" }} className="capitalize">{role.toLowerCase()}</p>
             </div>
           </div>

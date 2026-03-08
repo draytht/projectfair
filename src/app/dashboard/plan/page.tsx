@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { ProBadge } from "@/components/ui/pro-badge";
 
 type PlanData = {
   plan: "FREE" | "PRO";
@@ -51,48 +52,84 @@ function StatusBadge({ status }: { status: string }) {
 type Prices = { monthly: string; annual: string } | null;
 
 export default function PlanPage() {
+  const searchParams = useSearchParams();
+  const upgraded = searchParams.get("upgraded") === "1";
+  const sessionId = searchParams.get("session_id");
+
   const [data, setData] = useState<PlanData | null>(null);
   const [prices, setPrices] = useState<Prices>(null);
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(upgraded && !!sessionId);
+  const [syncFailed, setSyncFailed] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
-  const searchParams = useSearchParams();
-  const upgraded = searchParams.get("upgraded") === "1";
-  const sessionId = searchParams.get("session_id");
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/stripe/plan").then((r) => r.ok ? r.json() : null),
-      fetch("/api/stripe/prices").then((r) => r.ok ? r.json() : null),
-    ]).then(([d, p]) => {
-      if (d) setData(d);
-      if (p?.monthly) setPrices(p);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    let poll: ReturnType<typeof setInterval> | null = null;
 
-  // When Stripe redirects back with ?upgraded=1&session_id=..., sync directly from Stripe
-  useEffect(() => {
-    if (!upgraded || !sessionId) return;
-
-    fetch("/api/stripe/sync-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId }),
-    })
+    // Always fetch prices
+    fetch("/api/stripe/prices")
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        if (d?.plan === "PRO") {
-          setData(d);
-          window.dispatchEvent(new CustomEvent("nc:plan-upgraded", { detail: "PRO" }));
-        }
-      })
+      .then((p) => { if (p?.monthly && !cancelled) setPrices(p); })
       .catch(() => {});
-  }, [upgraded, sessionId]);
+
+    if (upgraded && sessionId) {
+      // 1. Fire sync-session once to write PRO into DB (best-effort, don't await)
+      fetch("/api/stripe/sync-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => {});
+
+      // 2. Load current plan immediately so user sees something
+      fetch("/api/stripe/plan")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d && !cancelled) { setData(d); setLoading(false); } })
+        .catch(() => { if (!cancelled) setLoading(false); });
+
+      // 3. Poll every 2 seconds until plan === PRO or 30s timeout
+      let elapsed = 0;
+      poll = setInterval(async () => {
+        elapsed += 2000;
+        try {
+          const res = await fetch("/api/stripe/plan");
+          if (res.ok) {
+            const d = await res.json();
+            if (d.plan === "PRO" && !cancelled) {
+              clearInterval(poll!);
+              setData(d);
+              setSyncing(false);
+              window.dispatchEvent(new CustomEvent("nc:plan-upgraded", { detail: "PRO" }));
+              return;
+            }
+          }
+        } catch { /* keep polling */ }
+
+        if (elapsed >= 30000 && !cancelled) {
+          clearInterval(poll!);
+          setSyncing(false);
+          setSyncFailed(true);
+        }
+      }, 2000);
+    } else {
+      // Normal load
+      fetch("/api/stripe/plan")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d && !cancelled) setData(d); })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }
+
+    return () => {
+      cancelled = true;
+      if (poll) clearInterval(poll);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function openPortal() {
     setPortalLoading(true);
@@ -156,24 +193,44 @@ export default function PlanPage() {
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <h2 className="nc-page-title" style={{ marginBottom: 6 }}>My Plan</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+        <h2 className="nc-page-title">My Plan</h2>
+        {isPro && <ProBadge size="md" />}
+      </div>
       <p style={{ color: "var(--th-text-2)", fontSize: 13, marginBottom: 32 }}>
         Manage your subscription and usage.
       </p>
 
       {upgraded && (
-        <div style={{ background: isPro ? "rgba(34,197,94,0.08)" : "color-mix(in srgb, var(--th-accent) 6%, transparent)", border: `1px solid ${isPro ? "rgba(34,197,94,0.25)" : "color-mix(in srgb, var(--th-accent) 25%, transparent)"}`, borderRadius: 12, padding: "14px 18px", marginBottom: 24, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          background: isPro ? "rgba(34,197,94,0.08)" : syncFailed ? "rgba(239,68,68,0.07)" : "color-mix(in srgb, var(--th-accent) 6%, transparent)",
+          border: `1px solid ${isPro ? "rgba(34,197,94,0.25)" : syncFailed ? "rgba(239,68,68,0.25)" : "color-mix(in srgb, var(--th-accent) 25%, transparent)"}`,
+          borderRadius: 12, padding: "14px 18px", marginBottom: 24, display: "flex", alignItems: "center", gap: 10,
+        }}>
           {isPro ? (
             <>
               <span style={{ fontSize: 18 }}>🎉</span>
               <p style={{ fontSize: 13, color: "#22c55e", fontWeight: 600, margin: 0 }}>You&apos;re now on Pro! Enjoy your expanded limits.</p>
             </>
-          ) : sessionId ? (
+          ) : syncing ? (
             <>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--th-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, animation: "spin 1s linear infinite" }}>
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
               </svg>
               <p style={{ fontSize: 13, color: "var(--th-accent)", fontWeight: 600, margin: 0 }}>Activating your Pro plan…</p>
+            </>
+          ) : syncFailed ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p style={{ fontSize: 13, color: "#ef4444", fontWeight: 600, margin: 0 }}>
+                Couldn&apos;t activate Pro automatically.{" "}
+                <button onClick={() => window.location.reload()} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: 700, padding: 0, textDecoration: "underline", fontSize: 13 }}>
+                  Refresh
+                </button>{" "}
+                or contact support if this persists.
+              </p>
             </>
           ) : null}
         </div>

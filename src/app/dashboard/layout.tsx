@@ -23,6 +23,14 @@ export default async function DashboardLayout({
 
   if (!dbUser) redirect("/login");
 
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId: user.id },
+    select: { plan: true, status: true },
+  });
+  const isPro =
+    subscription?.plan === "PRO" &&
+    (subscription?.status === "active" || subscription?.status === "trialing");
+
   return (
     <div
       style={{ background: "var(--th-bg)", color: "var(--th-text)" }}
@@ -52,7 +60,7 @@ export default async function DashboardLayout({
       </header>
 
       {/* Desktop sidebar */}
-      <Sidebar role={dbUser.role} name={dbUser.preferredName || dbUser.name} avatarUrl={dbUser.avatarUrl ?? null} />
+      <Sidebar role={dbUser.role} name={dbUser.preferredName || dbUser.name} avatarUrl={dbUser.avatarUrl ?? null} isPro={isPro ?? false} />
 
       {/* Main content */}
       <main className="flex-1 p-4 md:p-8 overflow-auto">{children}</main>
