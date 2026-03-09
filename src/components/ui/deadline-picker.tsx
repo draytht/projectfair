@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X } from "lucide-react";
 
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTH_NAMES = [
@@ -25,8 +25,30 @@ function isSameDay(a: Date, b: Date) {
     a.getDate() === b.getDate();
 }
 
+// Parse value: supports "YYYY-MM-DD", "YYYY-MM-DDTHH:MM", or ""
+function parseValue(value: string): { date: Date | undefined; hour: number; minute: number } {
+  if (!value) return { date: undefined, hour: 23, minute: 59 };
+  const [datePart, timePart] = value.split("T");
+  const date = datePart ? new Date(datePart + "T00:00:00") : undefined;
+  if (timePart) {
+    const [h, m] = timePart.split(":").map(Number);
+    return { date, hour: isNaN(h) ? 23 : h, minute: isNaN(m) ? 59 : m };
+  }
+  return { date, hour: 23, minute: 59 };
+}
+
+function buildValue(date: Date, hour: number, minute: number): string {
+  const d = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+  const t = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return `${d}T${t}`;
+}
+
 interface DeadlinePickerProps {
-  value: string;        // "YYYY-MM-DD" or ""
+  value: string;        // "YYYY-MM-DD", "YYYY-MM-DDTHH:MM", or ""
   onChange: (value: string) => void;
   placeholder?: string;
 }
@@ -42,18 +64,23 @@ export function DeadlinePicker({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const selected = value ? new Date(value + "T00:00:00") : undefined;
+  const parsed = parseValue(value);
+  const selected = parsed.date;
 
-  const init = selected ?? today;
-  const [viewYear, setViewYear] = useState(init.getFullYear());
-  const [viewMonth, setViewMonth] = useState(init.getMonth());
+  const [viewYear, setViewYear] = useState((selected ?? today).getFullYear());
+  const [viewMonth, setViewMonth] = useState((selected ?? today).getMonth());
+  const [hour, setHour] = useState(parsed.hour);
+  const [minute, setMinute] = useState(parsed.minute);
 
-  // When external value changes, sync the view
+  // Sync view when external value changes
   useEffect(() => {
-    if (selected) {
-      setViewYear(selected.getFullYear());
-      setViewMonth(selected.getMonth());
+    const p = parseValue(value);
+    if (p.date) {
+      setViewYear(p.date.getFullYear());
+      setViewMonth(p.date.getMonth());
     }
+    setHour(p.hour);
+    setMinute(p.minute);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
@@ -82,13 +109,15 @@ export function DeadlinePicker({
 
   function pickDay(date: Date) {
     if (date < today) return;
-    const iso = [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, "0"),
-      String(date.getDate()).padStart(2, "0"),
-    ].join("-");
-    onChange(iso);
-    setOpen(false);
+    // Select date but keep open for time selection
+    onChange(buildValue(date, hour, minute));
+  }
+
+  function updateTime(newHour: number, newMinute: number) {
+    if (!selected) return;
+    setHour(newHour);
+    setMinute(newMinute);
+    onChange(buildValue(selected, newHour, newMinute));
   }
 
   function clearDate(e: React.MouseEvent) {
@@ -98,10 +127,16 @@ export function DeadlinePicker({
 
   const cells = buildGrid(viewYear, viewMonth);
 
+  // Display label
   const displayLabel = selected
-    ? selected.toLocaleDateString(undefined, {
-        weekday: "short", month: "short", day: "numeric", year: "numeric",
-      })
+    ? (() => {
+        const dateStr = selected.toLocaleDateString(undefined, {
+          weekday: "short", month: "short", day: "numeric", year: "numeric",
+        });
+        const h12 = hour % 12 === 0 ? 12 : hour % 12;
+        const ampm = hour < 12 ? "AM" : "PM";
+        return `${dateStr} at ${h12}:${String(minute).padStart(2, "0")} ${ampm}`;
+      })()
     : null;
 
   return (
@@ -222,10 +257,105 @@ export function DeadlinePicker({
             })}
           </div>
 
-          {/* Footer */}
+          {/* ── Time picker ── */}
           <div
             style={{
               marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid var(--th-border)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ color: "var(--th-text-2)", fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" }}>
+                Time
+              </span>
+              {!selected && (
+                <span style={{ color: "var(--th-text-2)", fontSize: 10, opacity: 0.6 }}>
+                  Select a date first
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: selected ? 1 : 0.35, pointerEvents: selected ? "auto" : "none" }}>
+              {/* Hour stepper */}
+              <TimeStepper
+                value={hour}
+                min={0}
+                max={23}
+                display={String(hour % 12 === 0 ? 12 : hour % 12).padStart(2, "0")}
+                onIncrement={() => updateTime((hour + 1) % 24, minute)}
+                onDecrement={() => updateTime((hour + 23) % 24, minute)}
+              />
+
+              <span style={{ color: "var(--th-text)", fontWeight: 700, fontSize: 16, lineHeight: 1 }}>:</span>
+
+              {/* Minute stepper */}
+              <TimeStepper
+                value={minute}
+                min={0}
+                max={59}
+                display={String(minute).padStart(2, "0")}
+                onIncrement={() => updateTime(hour, (minute + 1) % 60)}
+                onDecrement={() => updateTime(hour, (minute + 59) % 60)}
+              />
+
+              {/* AM/PM toggle */}
+              <button
+                type="button"
+                onClick={() => updateTime(hour < 12 ? hour + 12 : hour - 12, minute)}
+                style={{
+                  marginLeft: 2,
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  border: "1.5px solid var(--th-border)",
+                  background: "var(--th-bg)",
+                  color: "var(--th-text)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                  cursor: "pointer",
+                  transition: "border-color 0.14s, color 0.14s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--th-accent)";
+                  e.currentTarget.style.color = "var(--th-accent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--th-border)";
+                  e.currentTarget.style.color = "var(--th-text)";
+                }}
+              >
+                {hour < 12 ? "AM" : "PM"}
+              </button>
+
+              {/* Done button */}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                style={{
+                  marginLeft: "auto",
+                  padding: "4px 12px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--th-accent)",
+                  color: "var(--th-accent-fg)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "opacity 0.14s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div
+            style={{
+              marginTop: 10,
               paddingTop: 10,
               borderTop: "1px solid var(--th-border)",
               display: "flex",
@@ -238,6 +368,8 @@ export function DeadlinePicker({
               <>
                 <span style={{ color: "var(--th-text-2)", fontSize: 11 }}>
                   {selected.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
+                  {" · "}
+                  {String(hour % 12 === 0 ? 12 : hour % 12).padStart(2, "0")}:{String(minute).padStart(2, "0")} {hour < 12 ? "AM" : "PM"}
                 </span>
                 <button
                   type="button"
@@ -265,7 +397,92 @@ export function DeadlinePicker({
   );
 }
 
-/* ── Sub-components ── */
+/* ── TimeStepper ── */
+
+function TimeStepper({
+  display,
+  onIncrement,
+  onDecrement,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  display: string;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <button
+        type="button"
+        onClick={onIncrement}
+        style={stepBtnStyle}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "var(--th-accent)";
+          e.currentTarget.style.color = "var(--th-accent)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "var(--th-border)";
+          e.currentTarget.style.color = "var(--th-text)";
+        }}
+      >
+        <ChevronUp size={11} strokeWidth={2.5} />
+      </button>
+
+      <div
+        style={{
+          width: 40,
+          height: 32,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--th-bg)",
+          border: "1.5px solid var(--th-border)",
+          borderRadius: 8,
+          color: "var(--th-text)",
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {display}
+      </div>
+
+      <button
+        type="button"
+        onClick={onDecrement}
+        style={stepBtnStyle}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "var(--th-accent)";
+          e.currentTarget.style.color = "var(--th-accent)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "var(--th-border)";
+          e.currentTarget.style.color = "var(--th-text)";
+        }}
+      >
+        <ChevronDown size={11} strokeWidth={2.5} />
+      </button>
+    </div>
+  );
+}
+
+const stepBtnStyle: React.CSSProperties = {
+  width: 24,
+  height: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 5,
+  border: "1px solid var(--th-border)",
+  background: "var(--th-bg)",
+  color: "var(--th-text)",
+  cursor: "pointer",
+  transition: "border-color 0.14s, color 0.14s",
+  padding: 0,
+};
+
+/* ── NavBtn ── */
 
 function NavBtn({
   onClick,
@@ -307,6 +524,8 @@ function NavBtn({
     </button>
   );
 }
+
+/* ── DayCell ── */
 
 function DayCell({
   day,
