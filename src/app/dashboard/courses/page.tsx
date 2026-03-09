@@ -137,12 +137,14 @@ function LinkProjectModal({
   courseId,
   courseName,
   unlinkedProjects,
+  totalProjects,
   onClose,
   onLinked,
 }: {
   courseId: string;
   courseName: string;
   unlinkedProjects: ProjectStub[];
+  totalProjects: number;
   onClose: () => void;
   onLinked: (projectId: string, courseId: string) => void;
 }) {
@@ -166,7 +168,9 @@ function LinkProjectModal({
     <Modal title={`Link project to ${courseName}`} onClose={onClose}>
       {unlinkedProjects.length === 0 ? (
         <p style={{ color: "var(--th-text-2)", fontSize: 13, marginBottom: 20 }}>
-          All your projects are already linked to a course.
+          {totalProjects === 0
+            ? "Create your first project to link to your course."
+            : "All your projects are already linked to a course."}
         </p>
       ) : (
         <>
@@ -708,6 +712,7 @@ export default function CoursesPage() {
           courseId={linkingCourseId}
           courseName={linkingCourse.name}
           unlinkedProjects={unlinkedProjects}
+          totalProjects={allUserProjects.length}
           onClose={() => setLinkingCourseId(null)}
           onLinked={handleProjectLinked}
         />

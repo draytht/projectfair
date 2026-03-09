@@ -54,13 +54,13 @@ function ProjectCard({
 
   return (
     <div
-      style={{ position: "relative", display: "flex", flexDirection: "column", minHeight: 164 }}
+      style={{ position: "relative", height: 196 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <Link
         href={`/dashboard/projects/${project.id}`}
-        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", flex: 1 }}
+        style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", boxSizing: "border-box" }}
         className="p-6 rounded-xl nc-card-hover group"
       >
         {project.courseCode && (
@@ -174,7 +174,7 @@ export default function ProjectsPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="nc-skeleton" style={{ height: 140, borderRadius: 12, background: "var(--th-border)" }} />
+            <div key={i} className="nc-skeleton" style={{ height: 196, borderRadius: 12, background: "var(--th-border)" }} />
           ))}
         </div>
       </div>

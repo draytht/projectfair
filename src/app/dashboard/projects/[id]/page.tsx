@@ -279,7 +279,7 @@ export default function ProjectPage() {
       .then((r) => r.json())
       .then((data) => {
         setProject(data);
-        setDeadlineValue(data.deadline ? new Date(data.deadline).toISOString().slice(0, 10) : "");
+        setDeadlineValue(data.deadline ? new Date(data.deadline).toISOString().slice(0, 16) : "");
         setLoading(false);
       });
   }, [id]);
@@ -599,8 +599,9 @@ export default function ProjectPage() {
     <div>
       {/* Back button */}
       <div style={{ marginBottom: 20 }}>
-        <Link
-          href="/dashboard/projects"
+        <button
+          type="button"
+          onClick={() => router.back()}
           onMouseEnter={() => setBackHovered(true)}
           onMouseLeave={() => setBackHovered(false)}
           style={{
@@ -608,7 +609,6 @@ export default function ProjectPage() {
             alignItems: "center",
             gap: 7,
             color: backHovered ? "var(--th-accent)" : "var(--th-text-2)",
-            textDecoration: "none",
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: "0.03em",
@@ -621,6 +621,7 @@ export default function ProjectPage() {
               : "var(--th-card)",
             transition: "color 0.18s ease, border-color 0.18s ease, background 0.18s ease",
             userSelect: "none",
+            cursor: "pointer",
           }}
         >
           <svg
@@ -642,8 +643,8 @@ export default function ProjectPage() {
               strokeLinejoin="round"
             />
           </svg>
-          My Projects
-        </Link>
+          Back
+        </button>
       </div>
 
       {/* Header */}
@@ -680,7 +681,7 @@ export default function ProjectPage() {
                         {deadlineSaving ? "Saving…" : "Save"}
                       </button>
                       <button
-                        onClick={() => { setDeadlineEditing(false); setDeadlineValue(project.deadline ? new Date(project.deadline).toISOString().slice(0, 10) : ""); }}
+                        onClick={() => { setDeadlineEditing(false); setDeadlineValue(project.deadline ? new Date(project.deadline).toISOString().slice(0, 16) : ""); }}
                         style={{ color: "var(--th-text-2)", background: "none", border: "1px solid var(--th-border)", borderRadius: 8, fontSize: 12, cursor: "pointer", padding: "6px 12px" }}
                       >
                         Cancel

@@ -19,6 +19,7 @@ export default async function DashboardPage() {
 
   const displayName = dbUser.preferredName || dbUser.name;
   const role = dbUser.role;
+  const isFirstLogin = Math.abs(dbUser.createdAt.getTime() - dbUser.updatedAt.getTime()) < 60_000;
 
   const subscription = await prisma.subscription.findUnique({
     where: { userId: user.id },
@@ -63,6 +64,7 @@ export default async function DashboardPage() {
         name={displayName}
         role={role}
         isPro={isPro ?? false}
+        isFirstLogin={isFirstLogin}
         courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, projectCount: c.projects.length }))}
         stats={[
           { label: "Projects", value: projects.length, href: "/dashboard/projects" },
@@ -117,6 +119,7 @@ export default async function DashboardPage() {
         name={displayName}
         role={role}
         isPro={isPro ?? false}
+        isFirstLogin={isFirstLogin}
         courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, projectCount: c.projects.length }))}
         stats={[
           { label: "Projects", value: projects.length, href: "/dashboard/projects" },
@@ -161,12 +164,13 @@ type ProjectItem = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Dashboard({
-  name, role, isPro = false, courses, stats, totalTasks, doneTasks,
+  name, role, isPro = false, isFirstLogin = false, courses, stats, totalTasks, doneTasks,
   assignedTasks = [], recentProjects = [], flagged = [],
 }: {
   name: string;
   role: string;
   isPro?: boolean;
+  isFirstLogin?: boolean;
   courses: CourseSummary[];
   stats: StatItem[];
   totalTasks: number;
@@ -193,7 +197,7 @@ function Dashboard({
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
           <div>
             <p style={{ color: "var(--th-text-2)", fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
-              Welcome back
+              {isFirstLogin ? "Welcome to NoCarry" : "Welcome back"}
             </p>
             <h1 style={{ color: "var(--th-text)", fontSize: "1.625rem", fontWeight: 800, lineHeight: 1.15, marginBottom: 10 }}>
               {name}

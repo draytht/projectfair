@@ -8,7 +8,8 @@ export function ProBadge({ size = "sm" }: { size?: "sm" | "md" }) {
     <motion.span
       initial={{ scale: 0.6, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 340, damping: 22 }}
+      //transition={{ type: "spring", stiffness: 340, damping: 22 }}
+      transition={{ type: "tween", ease: "easeOut", duration: 0.35 }}
       className="nc-pro-badge"
       title="Pro plan"
       style={{
