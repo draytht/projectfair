@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CTAButton } from "@/components/CTAButton";
+import { LandingNav } from "@/app/_components/LandingNav";
 import { Component as EtherealShadow } from "@/components/ui/etheral-shadow";
 import { AutoScrollingClientCarousel } from "@/components/ui/auto-scrolling-carousel";
 import { FlickeringFooter } from "@/components/ui/flickering-footer";
@@ -492,38 +493,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
-      <nav
-        style={{ borderBottom: "1px solid var(--th-border)" }}
-        className="flex items-center justify-between px-6 md:px-10 py-4"
-      >
-        <Link href="/" className="nc-brand">
-          <span className="nc-brand-dot" />
-          <span className="nc-brand-text">No<span style={{ color: "var(--th-accent)" }}>Carry</span></span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/pricing"
-            style={{ color: "var(--th-text-2)" }}
-            className="text-sm px-3 py-2.5 rounded-lg hover:opacity-70 transition-opacity min-h-[44px] flex items-center"
-          >
-            Pricing
-          </Link>
-          <Link
-            href="/login"
-            style={{ color: "var(--th-text-2)" }}
-            className="text-sm px-3 py-2.5 rounded-lg hover:opacity-70 transition-opacity min-h-[44px] flex items-center"
-          >
-            Log in
-          </Link>
-          <CTAButton
-            href="/signup"
-            style={{ background: "var(--th-accent)", color: "var(--th-accent-fg)" }}
-            className="text-sm px-4 py-2.5 rounded-lg font-medium hover:opacity-80 active:scale-95 transition-[opacity,transform] min-h-[44px] flex items-center"
-          >
-            Get started
-          </CTAButton>
-        </div>
-      </nav>
+      <LandingNav />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="px-6 md:px-10 pt-16 md:pt-20 pb-16 max-w-5xl mx-auto">
