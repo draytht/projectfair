@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useTheme, Theme } from "./ThemeProvider";
 
 const THEMES: { id: Theme; label: string; dot: string }[] = [
@@ -52,9 +53,10 @@ export function FloatingThemeToggle() {
     };
   }, [open]);
 
+  const pathname = usePathname();
   const current = THEMES.find((t) => t.id === theme);
 
-  if (!visible) return null;
+  if (!visible || pathname === "/coming-soon") return null;
 
   return (
     <div
