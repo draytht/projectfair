@@ -28,129 +28,149 @@ function DraggableCard({
 }) {
   const elRef   = useRef<HTMLDivElement>(null);
   const physRef = useRef({
-    pos:        null as { x: number; y: number } | null,
-    vel:        { x: 0, y: 0 },
-    prev:       { x: 0, y: 0, t: 0 },
-    dragging:   false,
-    startClient:{ x: 0, y: 0 },
-    startPos:   { x: 0, y: 0 },
-    raf:        0,
+    pos:         null as { x: number; y: number } | null,
+    vel:         { x: 0, y: 0 },
+    prev:        { x: 0, y: 0, t: 0 },
+    dragging:    false,
+    startClient: { x: 0, y: 0 },
+    startPos:    { x: 0, y: 0 },
+    raf:         0,
   });
 
-  const [fixedPos, setFixedPos]   = useState<{ x: number; y: number } | null>(null);
-  const [grabbed,  setGrabbed]    = useState(false);
+  const [fixedPos, setFixedPos] = useState<{ x: number; y: number } | null>(null);
+  const [grabbed,  setGrabbed]  = useState(false);
 
   useEffect(() => {
-    const r   = physRef.current;
-    const el  = elRef.current;
+    const el = elRef.current;
     if (!el) return;
+    const r = physRef.current;
 
-    // Non-passive touchstart so preventDefault() actually stops browser scroll
-    const blockScroll = (e: TouchEvent) => {
-      if (e.touches.length === 1) e.preventDefault();
+    // ── shared: start / move / end helpers ──────────────────────────────────
+    const startDrag = (clientX: number, clientY: number) => {
+      cancelAnimationFrame(r.raf);
+      const rect   = el.getBoundingClientRect();
+      const startX = r.pos ? r.pos.x : rect.left;
+      const startY = r.pos ? r.pos.y : rect.top;
+      r.pos         = { x: startX, y: startY };
+      r.vel         = { x: 0, y: 0 };
+      r.dragging    = true;
+      r.startClient = { x: clientX, y: clientY };
+      r.startPos    = { x: startX,  y: startY };
+      r.prev        = { x: clientX, y: clientY, t: Date.now() };
+      setFixedPos({ x: startX, y: startY });
+      setGrabbed(true);
     };
-    el.addEventListener("touchstart", blockScroll, { passive: false });
+
+    const moveDrag = (clientX: number, clientY: number) => {
+      if (!r.dragging) return;
+      const now = Date.now();
+      const dt  = now - r.prev.t;
+      if (dt > 0) {
+        r.vel.x = (clientX - r.prev.x) / dt;
+        r.vel.y = (clientY - r.prev.y) / dt;
+      }
+      r.prev = { x: clientX, y: clientY, t: now };
+      const np = {
+        x: r.startPos.x + (clientX - r.startClient.x),
+        y: r.startPos.y + (clientY - r.startClient.y),
+      };
+      r.pos = np;
+      setFixedPos({ ...np });
+    };
+
+    const endDrag = () => {
+      if (!r.dragging) return;
+      r.dragging = false;
+      setGrabbed(false);
+      r.vel.x *= 18;
+      r.vel.y *= 18;
+      const FRICTION = 0.88;
+      const animate = () => {
+        r.vel.x *= FRICTION;
+        r.vel.y *= FRICTION;
+        if (Math.abs(r.vel.x) < 0.08 && Math.abs(r.vel.y) < 0.08) return;
+        r.pos!.x += r.vel.x;
+        r.pos!.y += r.vel.y;
+        setFixedPos({ x: r.pos!.x, y: r.pos!.y });
+        r.raf = requestAnimationFrame(animate);
+      };
+      r.raf = requestAnimationFrame(animate);
+    };
+
+    // ── Touch Events (iOS / Android) ─────────────────────────────────────────
+    // Touch events are the most reliable on mobile — do NOT call
+    // preventDefault on touchstart before pointerdown fires (kills pointerdown
+    // on iOS). Instead handle drag entirely through touch events.
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault(); // safe here — we're NOT using pointerdown on mobile
+      const t = e.touches[0];
+      startDrag(t.clientX, t.clientY);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      moveDrag(t.clientX, t.clientY);
+    };
+    const onTouchEnd = () => endDrag();
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    // move + end on document so tracking survives finger leaving element
+    document.addEventListener("touchmove",   onTouchMove, { passive: false });
+    document.addEventListener("touchend",    onTouchEnd);
+    document.addEventListener("touchcancel", onTouchEnd);
+
+    // ── Pointer Events (desktop mouse only — skip touch pointers) ────────────
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return; // handled by touch events above
+      e.preventDefault();
+      startDrag(e.clientX, e.clientY);
+
+      const onMove = (ev: PointerEvent) => moveDrag(ev.clientX, ev.clientY);
+      const onUp   = () => {
+        endDrag();
+        document.removeEventListener("pointermove",   onMove);
+        document.removeEventListener("pointerup",     onUp);
+        document.removeEventListener("pointercancel", onUp);
+      };
+      document.addEventListener("pointermove",   onMove, { passive: false });
+      document.addEventListener("pointerup",     onUp);
+      document.addEventListener("pointercancel", onUp);
+    };
+    el.addEventListener("pointerdown", onPointerDown, { passive: false });
 
     return () => {
       cancelAnimationFrame(r.raf);
-      el.removeEventListener("touchstart", blockScroll);
+      el.removeEventListener("touchstart",   onTouchStart);
+      document.removeEventListener("touchmove",    onTouchMove);
+      document.removeEventListener("touchend",     onTouchEnd);
+      document.removeEventListener("touchcancel",  onTouchEnd);
+      el.removeEventListener("pointerdown",  onPointerDown);
     };
   }, []);
-
-  const getInitialPos = () => {
-    if (physRef.current.pos) return physRef.current.pos;
-    const rect = elRef.current!.getBoundingClientRect();
-    return { x: rect.left, y: rect.top };
-  };
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    cancelAnimationFrame(physRef.current.raf);
-
-    const pos = getInitialPos();
-    physRef.current.pos        = { ...pos };
-    physRef.current.vel        = { x: 0, y: 0 };
-    physRef.current.dragging   = true;
-    physRef.current.startClient = { x: e.clientX, y: e.clientY };
-    physRef.current.startPos    = { ...pos };
-    physRef.current.prev        = { x: e.clientX, y: e.clientY, t: Date.now() };
-
-    setFixedPos({ ...pos });
-    setGrabbed(true);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!physRef.current.dragging) return;
-
-    const now = Date.now();
-    const dt  = now - physRef.current.prev.t;
-    if (dt > 0) {
-      physRef.current.vel.x = (e.clientX - physRef.current.prev.x) / dt;
-      physRef.current.vel.y = (e.clientY - physRef.current.prev.y) / dt;
-    }
-    physRef.current.prev = { x: e.clientX, y: e.clientY, t: now };
-
-    const newPos = {
-      x: physRef.current.startPos.x + (e.clientX - physRef.current.startClient.x),
-      y: physRef.current.startPos.y + (e.clientY - physRef.current.startClient.y),
-    };
-    physRef.current.pos = newPos;
-    setFixedPos({ ...newPos });
-  };
-
-  const onPointerUp = () => {
-    physRef.current.dragging = false;
-    setGrabbed(false);
-
-    // Scale up velocity for a satisfying throw
-    physRef.current.vel.x *= 18;
-    physRef.current.vel.y *= 18;
-
-    const FRICTION = 0.88;
-
-    const animate = () => {
-      const p = physRef.current;
-      p.vel.x *= FRICTION;
-      p.vel.y *= FRICTION;
-
-      if (Math.abs(p.vel.x) < 0.08 && Math.abs(p.vel.y) < 0.08) return;
-
-      p.pos!.x += p.vel.x;
-      p.pos!.y += p.vel.y;
-      setFixedPos({ x: p.pos!.x, y: p.pos!.y });
-      p.raf = requestAnimationFrame(animate);
-    };
-
-    physRef.current.raf = requestAnimationFrame(animate);
-  };
 
   const floatAnim = fixedPos ? "none" : style?.animation;
 
   return (
     <div
       ref={elRef}
-      className={className}
+      className={`cs-draggable${className ? ` ${className}` : ""}`}
       style={{
         ...style,
         animation: floatAnim,
-        ...(fixedPos
-          ? { position: "fixed", left: fixedPos.x, top: fixedPos.y, right: "auto", bottom: "auto", transform: "none" }
-          : {}),
-        cursor:       grabbed ? "grabbing" : "grab",
         touchAction:  "none",
         userSelect:   "none",
         pointerEvents:"auto",
-        zIndex:       grabbed ? 999 : (style?.zIndex ?? 2),
-        boxShadow:    grabbed
+        ...(fixedPos
+          ? { position: "fixed", left: fixedPos.x, top: fixedPos.y, right: "auto", bottom: "auto", transform: "none" }
+          : {}),
+        cursor:     grabbed ? "grabbing" : "grab",
+        zIndex:     grabbed ? 999 : (style?.zIndex ?? 2),
+        boxShadow:  grabbed
           ? "0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px color-mix(in srgb,var(--th-accent) 30%,transparent)"
           : undefined,
-        scale:        grabbed ? "1.06" : "1",
-        transition:   grabbed ? "box-shadow .15s, scale .15s" : "box-shadow .3s, scale .3s",
+        scale:      grabbed ? "1.06" : "1",
+        transition: grabbed ? "box-shadow .15s, scale .15s" : "box-shadow .3s, scale .3s",
       }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
     >
       {children}
     </div>
@@ -322,6 +342,7 @@ export default function ComingSoonPage() {
         /* ─── Cards ──────────────────────────────────── */
         .cs-hint-card {
           position: absolute;
+          touch-action: none;
           backdrop-filter: blur(16px) saturate(1.5);
           -webkit-backdrop-filter: blur(16px) saturate(1.5);
           background: color-mix(in srgb, var(--th-card) 40%, transparent);
@@ -539,8 +560,8 @@ export default function ComingSoonPage() {
           /* card 3 — vertically centered, right side */
           .cs-card-freeloader {
             left: auto !important;
-            right: 8px !important;
-            top: 50% !important;
+            right: 2px !important;
+            top: 47% !important;
             bottom: auto !important;
             transform: translateY(-50%) rotate(2deg) !important;
             min-width: 0 !important;
@@ -810,7 +831,7 @@ export default function ComingSoonPage() {
           letterSpacing:".08em", fontWeight:700,
           textTransform:"uppercase", zIndex:4,
         }}>
-          © 2025 NoCarry — Fair grading, finally.
+          © 2026 NoCarry — Fair grading, finally.
         </div>
       </div>
 
