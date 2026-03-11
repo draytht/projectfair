@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NoCarry — Full Technical Documentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --accent: #6366f1;
+    --accent-light: #eef2ff;
+    --text: #0f172a;
+    --text-2: #475569;
+    --border: #e2e8f0;
+    --card: #f8fafc;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--text);
+    background: #fff;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 40px;
+  }
+
+  /* ── COVER ───────────────────────────────────────────────── */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 0 60px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 60px;
+    page-break-after: always;
+  }
+
+  .cover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 999px;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+
+  .cover h1 {
+    font-size: 52px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .cover h1 span { color: var(--accent); }
+
+  .cover-sub {
+    font-size: 17px;
+    color: var(--text-2);
+    max-width: 520px;
+    margin-bottom: 48px;
+    line-height: 1.6;
+  }
+
+  .cover-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .cover-tag {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  /* ── TOC ─────────────────────────────────────────────────── */
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 36px;
+    margin-bottom: 60px;
+    page-break-after: always;
+  }
+
+  .toc h2 {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+    margin-bottom: 24px;
+  }
+
+  .toc ol {
+    columns: 2;
+    column-gap: 40px;
+    padding-left: 20px;
+  }
+
+  .toc li {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    color: var(--text);
+    break-inside: avoid;
+  }
+
+  .toc li span {
+    color: var(--accent);
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  /* ── SECTIONS ────────────────────────────────────────────── */
+  .section {
+    margin-bottom: 60px;
+    page-break-inside: avoid;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .section-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .section-header h2 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 28px 0 12px;
+    letter-spacing: -0.01em;
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 20px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  p { margin-bottom: 12px; color: var(--text); }
+
+  ul, ol {
+    padding-left: 20px;
+    margin-bottom: 14px;
+  }
+
+  li {
+    margin-bottom: 6px;
+    color: var(--text);
+    font-size: 13.5px;
+  }
+
+  li strong { color: var(--text); }
+
+  /* ── CODE ────────────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 10px;
+    padding: 18px 20px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    overflow-x: auto;
+    margin: 14px 0;
+    page-break-inside: avoid;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 12px;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+
+  pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+
+  /* ── TABLE ───────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13px;
+    page-break-inside: avoid;
+  }
+
+  th {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  th:first-child { border-radius: 8px 0 0 0; }
+  th:last-child  { border-radius: 0 8px 0 0; }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td { background: var(--card); }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── CALLOUT ─────────────────────────────────────────────── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-light);
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #3730a3;
+  }
+
+  .callout strong { font-weight: 700; }
+
+  /* ── BADGE GRID ──────────────────────────────────────────── */
+  .badge-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  .badge.accent {
+    background: var(--accent-light);
+    border-color: #c7d2fe;
+    color: var(--accent);
+  }
+
+  /* ── MODEL CARD ──────────────────────────────────────────── */
+  .model-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 12px 0;
+    page-break-inside: avoid;
+  }
+
+  .model-card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 10px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .model-card ul {
+    margin: 0;
+  }
+
+  /* ── API ROUTE ───────────────────────────────────────────── */
+  .route {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+
+  .route:last-child { border-bottom: none; }
+
+  .method {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 5px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .method.get    { background: #dcfce7; color: #15803d; }
+  .method.post   { background: #dbeafe; color: #1d4ed8; }
+  .method.patch  { background: #fef9c3; color: #a16207; }
+  .method.delete { background: #fee2e2; color: #b91c1c; }
+
+  .route-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .route-desc {
+    color: var(--text-2);
+    margin-left: auto;
+    font-size: 12px;
+    text-align: right;
+    flex-shrink: 0;
+    max-width: 260px;
+  }
+
+  /* ── PRINT ───────────────────────────────────────────────── */
+  @media print {
+    body { padding: 24px 32px; font-size: 12.5px; }
+    .cover { page-break-after: always; min-height: auto; padding: 60px 0 40px; }
+    .toc { page-break-after: always; }
+    .section { page-break-before: auto; }
+    pre { font-size: 11px; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="cover-badge">
+    <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><polygon points="4,0 8,3 4,8 0,3"/></svg>
+    Technical Documentation
+  </div>
+  <h1>No<span>Carry</span><br/>Dev-to-Dev Guide</h1>
+  <p class="cover-sub">
+    Everything a developer needs to understand, extend, or maintain the NoCarry platform — architecture, data models, APIs, auth flow, billing, and more.
+  </p>
+  <div class="cover-meta">
+    <span class="cover-tag">Next.js 16.1.6</span>
+    <span class="cover-tag">React 19</span>
+    <span class="cover-tag">TypeScript 5</span>
+    <span class="cover-tag">Prisma 7 + PostgreSQL</span>
+    <span class="cover-tag">Supabase Auth</span>
+    <span class="cover-tag">Stripe Billing</span>
+    <span class="cover-tag">Tailwind CSS 4</span>
+    <span class="cover-tag">Anthropic AI</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ TOC -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><span>01</span> Project Overview</li>
+    <li><span>02</span> Repository Structure</li>
+    <li><span>03</span> Environment Variables</li>
+    <li><span>04</span> Configuration Files</li>
+    <li><span>05</span> Theme System</li>
+    <li><span>06</span> Database Schema</li>
+    <li><span>07</span> Authentication Flow</li>
+    <li><span>08</span> Dashboard Layout</li>
+    <li><span>09</span> API Routes</li>
+    <li><span>10</span> Contribution Scoring</li>
+    <li><span>11</span> Billing — Stripe</li>
+    <li><span>12</span> AI — Anthropic Reports</li>
+    <li><span>13</span> Key UI Components</li>
+    <li><span>14</span> Landing Page</li>
+    <li><span>15</span> Performance & Security</li>
+    <li><span>16</span> Tech Stack Summary</li>
+    <li><span>17</span> NPM Scripts</li>
+    <li><span>18</span> Extending the App</li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 01 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">01</div>
+    <h2>Project Overview</h2>
+  </div>
+
+  <p><strong>NoCarry</strong> is a full-stack SaaS web application that solves the fairness problem in university group projects. It tracks individual contributions, enables anonymous peer reviews, surfaces freeloaders with hard data, and gives professors AI-generated grading reports — all in one platform.</p>
+
+  <h3>Who uses it</h3>
+  <table>
+    <tr><th>Role</th><th>What they do</th></tr>
+    <tr><td><strong>Student</strong></td><td>Create/join projects, manage tasks via Kanban, review teammates, track personal contribution score</td></tr>
+    <tr><td><strong>Team Leader</strong></td><td>All student features + create projects, invite members, set deadlines, upload files</td></tr>
+    <tr><td><strong>Professor</strong></td><td>Create courses, link projects, monitor all teams, generate AI grading reports, detect freeloaders</td></tr>
+  </table>
+
+  <h3>Core loop</h3>
+  <ol>
+    <li>Professor creates a course → students create projects inside it</li>
+    <li>Team leader invites members → members get tasks assigned on a Kanban board</li>
+    <li>Every action (task created, completed, file uploaded) logs an <code>ActivityLog</code> and increments contribution points</li>
+    <li>At deadline, projects auto-archive → professor pulls AI grading report with contribution breakdown + peer reviews</li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 02 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">02</div>
+    <h2>Repository Structure</h2>
+  </div>
+
+<pre><code>nocarry/
+├── prisma/
+│   ├── schema.prisma          # Single source of truth for DB
+│   └── migrations/            # Auto-generated migration history
+├── public/                    # Static assets (images, sounds)
+├── src/
+│   ├── app/                   # Next.js App Router
+│   │   ├── (auth)/            # Route group — login, signup
+│   │   │   ├── login/page.tsx
+│   │   │   └── signup/page.tsx
+│   │   ├── _components/       # Landing page components only
+│   │   │   └── LandingNav.tsx
+│   │   ├── api/               # All API routes (REST-style)
+│   │   │   ├── auth/
+│   │   │   ├── courses/
+│   │   │   ├── projects/
+│   │   │   ├── stripe/
+│   │   │   ├── feedback/
+│   │   │   ├── invite/
+│   │   │   ├── professor/
+│   │   │   ├── profile/
+│   │   │   ├── users/
+│   │   │   └── ...
+│   │   ├── dashboard/         # Protected app shell
+│   │   │   ├── _components/   # Sidebar, nav, modals, etc.
+│   │   │   ├── archive/
+│   │   │   ├── courses/
+│   │   │   ├── monitor/[id]/  # Professor monitoring view
+│   │   │   ├── plan/          # Billing UI
+│   │   │   ├── profile/
+│   │   │   ├── projects/
+│   │   │   │   ├── new/
+│   │   │   │   └── [id]/
+│   │   │   │       ├── tasks/new/
+│   │   │   │       ├── invite/
+│   │   │   │       └── review/
+│   │   │   ├── trash/
+│   │   │   └── layout.tsx     # Auth guard + shell
+│   │   ├── invite/[token]/    # Public invite acceptance
+│   │   ├── pricing/
+│   │   ├── privacy/
+│   │   ├── terms/
+│   │   ├── changelog/
+│   │   ├── layout.tsx         # Root layout (fonts, theme, providers)
+│   │   ├── page.tsx           # Landing page
+│   │   ├── globals.css        # Theme vars, keyframes, utilities
+│   │   └── icon.tsx           # Favicon (SVG)
+│   ├── components/
+│   │   ├── ui/                # shadcn components + custom
+│   │   │   ├── button.tsx
+│   │   │   ├── pro-badge.tsx
+│   │   │   ├── deadline-picker.tsx
+│   │   │   ├── calendar.tsx
+│   │   │   ├── etheral-shadow.tsx
+│   │   │   ├── auto-scrolling-carousel.tsx
+│   │   │   └── flickering-footer.tsx
+│   │   ├── ThemeProvider.tsx
+│   │   ├── ThemeToggle.tsx
+│   │   ├── FloatingThemeToggle.tsx
+│   │   ├── AnimatedCounter.tsx
+│   │   ├── CTAButton.tsx
+│   │   ├── ClickSound.tsx
+│   │   └── ScrollReveal.tsx
+│   └── lib/
+│       ├── supabase/
+│       │   ├── server.ts      # SSR Supabase client
+│       │   └── client.ts      # Browser Supabase client
+│       ├── prisma.ts          # DB singleton + pooling
+│       ├── contribution.ts    # Score calculation logic
+│       ├── plan.ts            # Plan limit enforcement
+│       ├── sendInviteEmail.ts # Resend email utility
+│       ├── sounds.ts          # Audio feedback
+│       └── utils.ts           # cn() helper
+├── next.config.ts
+├── tsconfig.json
+├── postcss.config.mjs
+└── package.json</code></pre>
+
+  <div class="callout">
+    <strong>Route groups:</strong> <code>(auth)/</code> is a Next.js route group — the folder name in parentheses is stripped from the URL. So <code>(auth)/login/page.tsx</code> renders at <code>/login</code>, not <code>/auth/login</code>.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 03 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">03</div>
+    <h2>Environment Variables</h2>
+  </div>
+
+  <p>All secrets live in <code>.env.local</code> (never committed). Use <code>.env.example</code> as the template.</p>
+
+  <table>
+    <tr><th>Variable</th><th>What it's for</th><th>Where it's used</th></tr>
+    <tr><td><code>NEXT_PUBLIC_SUPABASE_URL</code></td><td>Your Supabase project URL</td><td>Both client + server</td></tr>
+    <tr><td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td><td>Supabase public anon key</td><td>Browser auth</td></tr>
+    <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Bypass RLS — admin ops</td><td>Server API routes</td></tr>
+    <tr><td><code>DATABASE_URL</code></td><td>PgBouncer connection string</td><td>Prisma runtime</td></tr>
+    <tr><td><code>DIRECT_URL</code></td><td>Direct Postgres (no pooling)</td><td>Prisma migrations only</td></tr>
+    <tr><td><code>RESEND_API_KEY</code></td><td>Email service key</td><td>Invite emails</td></tr>
+    <tr><td><code>RESEND_FROM_EMAIL</code></td><td>Sender address</td><td>Invite emails</td></tr>
+    <tr><td><code>NEXT_PUBLIC_APP_URL</code></td><td>Your deployed domain</td><td>Invite links, redirects</td></tr>
+    <tr><td><code>STRIPE_SECRET_KEY</code></td><td>Stripe server-side key</td><td>Checkout, webhooks</td></tr>
+    <tr><td><code>STRIPE_WEBHOOK_SECRET</code></td><td>Webhook signature secret</td><td>Webhook validation</td></tr>
+    <tr><td><code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code></td><td>Stripe client-side key</td><td>Stripe.js in browser</td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>Two DB URLs:</strong> <code>DATABASE_URL</code> points to PgBouncer (connection pool, for runtime queries). <code>DIRECT_URL</code> points directly to Postgres (needed for <code>prisma migrate</code> because PgBouncer doesn't support migration DDL transactions).
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 04 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">04</div>
+    <h2>Configuration Files</h2>
+  </div>
+
+  <h3>next.config.ts</h3>
+  <ul>
+    <li><strong>Images:</strong> AVIF + WebP formats, 1-year TTL, Supabase CDN remote pattern allowed</li>
+    <li><strong>Security headers</strong> on every route: <code>X-Frame-Options: DENY</code>, <code>X-Content-Type-Options: nosniff</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code> (camera/mic/geo all blocked)</li>
+    <li><strong>Cache strategy:</strong> Static assets → 1-year immutable, <code>/api/*</code> → no-store, public pages → 60s + 1hr stale</li>
+    <li><strong>Experimental:</strong> <code>optimizePackageImports</code> for lucide-react and three to reduce bundle size</li>
+  </ul>
+
+  <h3>tsconfig.json</h3>
+  <ul>
+    <li>Target: <code>ES2017</code> — runs on modern Node without transpiling too far down</li>
+    <li>Module resolution: <code>bundler</code> — Next.js/Turbopack-aware</li>
+    <li>Path alias: <code>@/*</code> → <code>./src/*</code> — so <code>import { prisma } from "@/lib/prisma"</code> always works</li>
+    <li>Strict mode on, incremental builds enabled</li>
+  </ul>
+
+  <h3>postcss.config.mjs</h3>
+  <p>Single plugin: <code>@tailwindcss/postcss</code> — Tailwind v4 uses PostCSS to process CSS directly, no separate config file required.</p>
+
+  <h3>NPM Scripts</h3>
+<pre><code>"dev":   "next dev"                       # Start dev server (Turbopack)
+"build": "prisma generate && next build"  # Generate Prisma client, then build
+"start": "next start"                     # Serve production build
+"lint":  "eslint"                         # Run ESLint</code></pre>
+
+  <div class="callout"><strong>Important:</strong> <code>prisma generate</code> runs before every build. This regenerates the Prisma Client from <code>schema.prisma</code>. If you modify the schema, always run <code>prisma generate</code> locally too, or your types will be stale.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 05 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">05</div>
+    <h2>Theme System</h2>
+  </div>
+
+  <p>The theme system is 100% CSS — no JS runtime cost. It's built on CSS custom properties scoped to a <code>data-theme</code> attribute on <code>&lt;html&gt;</code>.</p>
+
+  <h3>How it works</h3>
+  <ol>
+    <li>Root layout injects an inline script that reads <code>localStorage.getItem("nc-theme")</code> and sets <code>document.documentElement.dataset.theme</code> before first paint — zero flash</li>
+    <li>Every component reads from <code>var(--th-*)</code> variables</li>
+    <li><code>ThemeProvider</code> React context exposes <code>theme</code> + <code>setTheme()</code></li>
+    <li><code>FloatingThemeToggle</code> renders in the corner on all pages</li>
+  </ol>
+
+  <h3>Available themes</h3>
+  <div class="badge-grid">
+    <span class="badge accent">light</span>
+    <span class="badge accent">dark</span>
+    <span class="badge">gruvbox</span>
+    <span class="badge">nord</span>
+    <span class="badge">tokyo-night</span>
+    <span class="badge">dracula</span>
+    <span class="badge">catppuccin</span>
+  </div>
+
+  <h3>CSS variable reference</h3>
+  <table>
+    <tr><th>Variable</th><th>Purpose</th></tr>
+    <tr><td><code>--th-bg</code></td><td>Page background</td></tr>
+    <tr><td><code>--th-card</code></td><td>Card / panel background</td></tr>
+    <tr><td><code>--th-text</code></td><td>Primary text</td></tr>
+    <tr><td><code>--th-text-2</code></td><td>Secondary / muted text</td></tr>
+    <tr><td><code>--th-border</code></td><td>Border color</td></tr>
+    <tr><td><code>--th-accent</code></td><td>Primary action color (buttons, links, active states)</td></tr>
+    <tr><td><code>--th-accent-fg</code></td><td>Text on top of accent (e.g. button label)</td></tr>
+  </table>
+
+  <h3>Adding a new theme</h3>
+  <p>In <code>globals.css</code>, add a new block:</p>
+<pre><code>[data-theme="mytheme"] {
+  --th-bg:        oklch(0.15 0.02 250);
+  --th-card:      oklch(0.20 0.02 250);
+  --th-text:      oklch(0.95 0 0);
+  --th-text-2:    oklch(0.65 0 0);
+  --th-border:    oklch(0.30 0.02 250);
+  --th-accent:    oklch(0.70 0.20 180);
+  --th-accent-fg: oklch(0.10 0 0);
+}</code></pre>
+  <p>Then add <code>"mytheme"</code> to the <code>themes</code> array in <code>ThemeProvider.tsx</code>.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 06 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">06</div>
+    <h2>Database Schema (Prisma)</h2>
+  </div>
+
+  <p>Database: <strong>PostgreSQL</strong> with <strong>PgBouncer</strong> connection pooling. ORM: <strong>Prisma 7.4.1</strong> with <code>@prisma/adapter-pg</code>.</p>
+
+  <div class="callout">The Prisma singleton in <code>src/lib/prisma.ts</code> uses a <code>pg.Pool</code> (max 3 connections) and the PgBouncer adapter. This prevents connection exhaustion in serverless/edge environments where each request would otherwise open a new DB connection.</div>
+
+  <h3>Models</h3>
+
+  <div class="model-card">
+    <h4>User</h4>
+    <ul>
+      <li><code>id</code> — UUID (mirrors Supabase auth user ID)</li>
+      <li><code>email</code> — unique</li>
+      <li><code>name</code>, <code>preferredName</code>, <code>avatarUrl</code></li>
+      <li><code>role</code> — <code>STUDENT | PROFESSOR | TEAM_LEADER</code></li>
+      <li><code>school</code>, <code>major</code>, <code>bio</code></li>
+      <li><code>githubUrl</code>, <code>linkedinUrl</code>, <code>personalLinks</code> (JSON array)</li>
+      <li><code>status</code>, <code>statusExpiresAt</code> — custom status message with auto-expiry</li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>Project</h4>
+    <ul>
+      <li><code>id</code>, <code>name</code>, <code>description</code></li>
+      <li><code>ownerId</code> — the team leader who created it</li>
+      <li><code>courseId</code> / <code>courseCode</code> — optional link to a Course</li>
+      <li><code>deadline</code> — DateTime; triggers auto-archive</li>
+      <li><code>status</code> — <code>ACTIVE | ARCHIVED | DELETED</code></li>
+      <li><code>archivedAt</code>, <code>archivedReason</code></li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>Task</h4>
+    <ul>
+      <li><code>projectId</code>, <code>creatorId</code>, <code>assigneeId</code></li>
+      <li><code>title</code>, <code>description</code></li>
+      <li><code>status</code> — <code>TODO | IN_PROGRESS | DONE</code></li>
+      <li><code>dueDate</code>, <code>completedAt</code></li>
+      <li><code>outputType</code> — <code>PDF | PPTX | TXT | DOCX | CODE</code></li>
+      <li><code>outputFileUrl</code>, <code>outputFileName</code> — deliverable upload</li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>ActivityLog</h4>
+    <ul>
+      <li><code>userId</code>, <code>projectId</code>, <code>taskId</code> (optional)</li>
+      <li><code>action</code> — string like <code>"TASK_CREATED"</code>, <code>"TASK_COMPLETED"</code>, <code>"FILE_UPLOADED"</code></li>
+      <li><code>metadata</code> — JSON for extra context (e.g., task name)</li>
+      <li>This table powers <strong>contribution scoring</strong> — every meaningful action is logged here</li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>PeerReview</h4>
+    <ul>
+      <li><code>projectId</code>, <code>giverId</code>, <code>receiverId</code> — unique compound</li>
+      <li><code>quality</code>, <code>communication</code>, <code>timeliness</code>, <code>initiative</code> — all Int (1–5)</li>
+      <li><code>comment</code> — optional anonymous text</li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>Subscription</h4>
+    <ul>
+      <li><code>userId</code> — one subscription per user</li>
+      <li><code>stripeCustomerId</code>, <code>stripeSubscriptionId</code>, <code>stripePriceId</code></li>
+      <li><code>plan</code> — <code>FREE | PRO</code></li>
+      <li><code>status</code> — <code>active | trialing | past_due | canceled | incomplete</code></li>
+      <li><code>currentPeriodEnd</code> — used to show renewal date</li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>ChatMessage + ChatReaction</h4>
+    <ul>
+      <li>Project-scoped chat — each message has <code>projectId</code>, <code>senderId</code>, <code>text</code>, optional <code>imageUrl</code></li>
+      <li><code>ChatReaction</code> — <code>messageId + userId</code> unique, <code>emoji</code> (default 👍)</li>
+      <li><code>ChatReactionPreference</code> — per-user per-project preferred quick-reaction emoji</li>
+    </ul>
+  </div>
+
+  <div class="model-card">
+    <h4>ProjectInvite</h4>
+    <ul>
+      <li><code>token</code> — unique UUID, sent in the invite email URL</li>
+      <li><code>email</code>, <code>role</code>, <code>expiresAt</code>, <code>usedAt</code></li>
+      <li>When a user signs up with a matching email, invites are auto-consumed and they're added to the project</li>
+    </ul>
+  </div>
+
+  <h3>Common Prisma patterns used in this codebase</h3>
+<pre><code>// Upsert subscription on Stripe webhook
+await prisma.subscription.upsert({
+  where: { userId },
+  create: { userId, plan: "PRO", status: "active", ... },
+  update: { plan: "PRO", status: "active", ... },
+});
+
+// Soft delete — set status instead of deleting
+await prisma.project.update({
+  where: { id: projectId },
+  data: { status: "DELETED" },
+});
+
+// Compound unique check
+await prisma.peerReview.findUnique({
+  where: { projectId_giverId_receiverId: { projectId, giverId, receiverId } },
+});</code></pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 07 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">07</div>
+    <h2>Authentication Flow</h2>
+  </div>
+
+  <p>Auth is handled entirely by <strong>Supabase Auth</strong> with SSR cookie-based sessions. There is no custom JWT logic.</p>
+
+  <h3>How it works end-to-end</h3>
+  <ol>
+    <li>User submits email + password on <code>/login</code></li>
+    <li>Browser Supabase client calls <code>supabase.auth.signInWithPassword()</code></li>
+    <li>Supabase returns a session — the <code>@supabase/ssr</code> package stores this in an httpOnly cookie automatically</li>
+    <li>On every server request, <code>createClient()</code> from <code>src/lib/supabase/server.ts</code> reads the cookie and returns the authenticated session</li>
+    <li>Dashboard layout calls <code>supabase.auth.getUser()</code> — if no session, redirect to <code>/login</code></li>
+  </ol>
+
+  <h3>Two Supabase clients</h3>
+  <table>
+    <tr><th>File</th><th>Used in</th><th>Purpose</th></tr>
+    <tr><td><code>lib/supabase/server.ts</code></td><td>Server Components, API routes, layout</td><td>Reads cookies, validates session server-side</td></tr>
+    <tr><td><code>lib/supabase/client.ts</code></td><td>Client Components (login/signup forms)</td><td>Browser-side sign in, sign up, sign out</td></tr>
+  </table>
+
+  <h3>User creation flow</h3>
+<pre><code>// POST /api/auth/register
+1. supabase.auth.admin.createUser({ email, password })  // Creates Supabase auth user
+2. prisma.user.create({ id: supabase_uid, email, name, role })  // Mirror in DB
+3. Check for pending invites matching email → auto-consume them
+4. Return user</code></pre>
+
+  <h3>Logout</h3>
+<pre><code>// POST /api/auth/logout (form action in MobileNav / Sidebar)
+await supabase.auth.signOut()
+redirect("/login")</code></pre>
+
+  <div class="callout"><strong>Important:</strong> The Prisma <code>User.id</code> is the same UUID as the Supabase auth user ID. This allows cross-referencing without extra joins — always use the Supabase user ID as the Prisma user ID.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 08 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">08</div>
+    <h2>Dashboard Layout</h2>
+  </div>
+
+  <p><code>src/app/dashboard/layout.tsx</code> is a <strong>server component</strong> that acts as the auth guard and shell for all <code>/dashboard/*</code> routes.</p>
+
+  <h3>What it does on every request</h3>
+  <ol>
+    <li>Calls <code>supabase.auth.getUser()</code> — redirects to <code>/login</code> if unauthenticated</li>
+    <li>Fetches <code>prisma.user</code> by Supabase UID — redirects if user not found in DB</li>
+    <li>Fetches <code>prisma.subscription</code> — determines <code>isPro</code> flag</li>
+    <li>Renders: mobile nav (hidden on desktop) + desktop sidebar + main content + floating avatar card</li>
+  </ol>
+
+  <h3>Layout tree</h3>
+<pre><code>&lt;div class="min-h-screen flex flex-col md:flex-row"&gt;
+  &lt;div class="md:hidden"&gt;
+    &lt;MobileNav /&gt;           {/* Fixed 56px top bar, mobile only */}
+  &lt;/div&gt;
+  &lt;div class="md:hidden h-14 shrink-0" /&gt;  {/* Spacer for fixed navbar */}
+
+  &lt;Sidebar /&gt;               {/* Collapsible sidebar, desktop only */}
+
+  &lt;main class="flex-1 ..."&gt;
+    {children}               {/* The actual page content */}
+  &lt;/main&gt;
+
+  &lt;AvatarStatusCard /&gt;      {/* Floating status bubble */}
+&lt;/div&gt;</code></pre>
+
+  <h3>Sidebar</h3>
+  <ul>
+    <li>Collapses to <strong>44px</strong> (icon-only), expands to <strong>208px</strong> on hover</li>
+    <li>Can be pinned open with <strong>Ctrl+B / ⌘B</strong></li>
+    <li>Shows PRO badge next to username if subscription is active</li>
+    <li>Nav links are filtered by role (PROFESSOR gets Monitor + Courses links)</li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 09 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">09</div>
+    <h2>API Routes</h2>
+  </div>
+
+  <p>All API routes live under <code>src/app/api/</code> and follow Next.js App Router conventions (named exports: <code>GET</code>, <code>POST</code>, <code>PATCH</code>, <code>DELETE</code>). Every protected route validates the Supabase session first.</p>
+
+  <h4>Authentication</h4>
+  <div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/auth/register</span><span class="route-desc">Create user in Supabase + Prisma, consume pending invites</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/auth/logout</span><span class="route-desc">Sign out and clear session cookie</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/auth/me</span><span class="route-desc">Return current authenticated user</span></div>
+  </div>
+
+  <h4>Projects</h4>
+  <div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/projects</span><span class="route-desc">List user's projects (auto-archives expired)</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects</span><span class="route-desc">Create project (enforces plan limit)</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/projects/[id]</span><span class="route-desc">Get single project with members + tasks</span></div>
+    <div class="route"><span class="method patch">PATCH</span><span class="route-path">/api/projects/[id]</span><span class="route-desc">Update project name/description/deadline</span></div>
+    <div class="route"><span class="method delete">DELETE</span><span class="route-path">/api/projects/[id]</span><span class="route-desc">Soft-delete (sets status=DELETED)</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/projects/[id]/tasks</span><span class="route-desc">List all tasks for project</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/tasks</span><span class="route-desc">Create task + log ActivityLog</span></div>
+    <div class="route"><span class="method patch">PATCH</span><span class="route-path">/api/projects/[id]/tasks/[taskId]</span><span class="route-desc">Update task status/assignee/etc + log activity</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/invite</span><span class="route-desc">Send invite email via Resend</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/reviews</span><span class="route-desc">Submit peer review scores</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/contributions</span><span class="route-desc">Calculate + return contribution scores</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/report</span><span class="route-desc">Generate AI grading report via Anthropic</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/chat</span><span class="route-desc">Send chat message</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/chat/[messageId]/react</span><span class="route-desc">Add/toggle emoji reaction</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/projects/[id]/files</span><span class="route-desc">Upload file to Supabase Storage</span></div>
+  </div>
+
+  <h4>Stripe Billing</h4>
+  <div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/stripe/checkout</span><span class="route-desc">Create Stripe Checkout session → redirect to Stripe</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/stripe/portal</span><span class="route-desc">Create Stripe Customer Portal session → redirect</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/stripe/plan</span><span class="route-desc">Return current subscription details</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/stripe/cancel</span><span class="route-desc">Cancel subscription at period end</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/stripe/webhook</span><span class="route-desc">Handle Stripe events (subscription created/updated/deleted, payment failed)</span></div>
+  </div>
+
+  <h4>Professor</h4>
+  <div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/professor/courses</span><span class="route-desc">List professor's courses with project counts</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/professor/projects</span><span class="route-desc">All projects in professor's courses</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/professor/projects/[id]/summary</span><span class="route-desc">Contribution + peer review summary for grading</span></div>
+  </div>
+
+  <h4>Utilities</h4>
+  <div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/invite/[token]</span><span class="route-desc">Accept invite token → add user to project</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/feedback</span><span class="route-desc">Public: approved testimonials for landing page</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/feedback</span><span class="route-desc">Submit testimonial</span></div>
+    <div class="route"><span class="method post">POST</span><span class="route-path">/api/bug-report</span><span class="route-desc">Submit bug report</span></div>
+    <div class="route"><span class="method get">GET</span><span class="route-path">/api/trash</span><span class="route-desc">List soft-deleted projects and courses</span></div>
+    <div class="route"><span class="method patch">PATCH</span><span class="route-path">/api/profile</span><span class="route-desc">Update current user's profile fields</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 10 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <h2>Contribution Scoring</h2>
+  </div>
+
+  <p>Core logic lives in <code>src/lib/contribution.ts</code>. It reads <code>ActivityLog</code> records and calculates a weighted score per member.</p>
+
+  <h3>Point system</h3>
+  <table>
+    <tr><th>Action</th><th>Points</th></tr>
+    <tr><td>Task created</td><td>+2</td></tr>
+    <tr><td>Task completed (status → DONE)</td><td>+5</td></tr>
+    <tr><td>Task in progress (status → IN_PROGRESS)</td><td>+3</td></tr>
+    <tr><td>Member invited to project</td><td>+1</td></tr>
+    <tr><td>Project created</td><td>+1</td></tr>
+    <tr><td>File uploaded</td><td>+1</td></tr>
+  </table>
+
+  <h3>Output</h3>
+<pre><code>// getContributionScores(projectId) returns:
+[
+  {
+    userId: "uuid",
+    name: "Alice",
+    points: 42,
+    percentage: 58.3,
+    breakdown: {
+      tasksCreated: 5,
+      tasksCompleted: 4,
+      tasksInProgress: 1,
+      invites: 2,
+      ...
+    }
+  },
+  ...
+]</code></pre>
+
+  <p>This data feeds the Professor monitoring dashboard and the AI grading report.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 11 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <h2>Billing — Stripe</h2>
+  </div>
+
+  <h3>Plans</h3>
+  <table>
+    <tr><th>Plan</th><th>Projects</th><th>AI Reports</th><th>Price</th></tr>
+    <tr><td><strong>FREE</strong></td><td>Limited (enforced via <code>plan.ts</code>)</td><td>No</td><td>$0</td></tr>
+    <tr><td><strong>PRO</strong></td><td>Unlimited</td><td>Yes</td><td>Stripe Price</td></tr>
+  </table>
+
+  <h3>Checkout flow</h3>
+  <ol>
+    <li>User clicks upgrade on <code>/dashboard/plan</code></li>
+    <li>Frontend POSTs to <code>/api/stripe/checkout</code></li>
+    <li>Server creates a Stripe Checkout Session with <code>success_url</code> + <code>cancel_url</code></li>
+    <li>User is redirected to Stripe's hosted checkout page</li>
+    <li>On success, Stripe fires <code>checkout.session.completed</code> webhook</li>
+    <li>Webhook handler at <code>/api/stripe/webhook</code> upserts the <code>Subscription</code> record in Prisma</li>
+  </ol>
+
+  <h3>Webhook events handled</h3>
+  <table>
+    <tr><th>Event</th><th>Action</th></tr>
+    <tr><td><code>checkout.session.completed</code></td><td>Upsert subscription, set plan=PRO, status=active</td></tr>
+    <tr><td><code>customer.subscription.updated</code></td><td>Sync status changes (trialing, past_due, active)</td></tr>
+    <tr><td><code>customer.subscription.deleted</code></td><td>Set plan=FREE, status=canceled</td></tr>
+    <tr><td><code>invoice.payment_failed</code></td><td>Set status=past_due, notify user</td></tr>
+  </table>
+
+  <div class="callout"><strong>Webhook security:</strong> The webhook route reads the raw request body and verifies the <code>stripe-signature</code> header using <code>STRIPE_WEBHOOK_SECRET</code>. Never parse the body as JSON before this check — Stripe requires the raw bytes.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 12 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">12</div>
+    <h2>AI — Anthropic Reports</h2>
+  </div>
+
+  <p>Professors can generate an AI-written grading report for any project. This hits <code>POST /api/projects/[id]/report</code>.</p>
+
+  <h3>What gets sent to the AI</h3>
+  <ul>
+    <li>Project name, description, deadline</li>
+    <li>All members with their contribution scores and breakdowns</li>
+    <li>All peer review scores per member (quality, communication, timeliness, initiative) + comments</li>
+    <li>Task list with statuses and assignees</li>
+  </ul>
+
+  <h3>What comes back</h3>
+  <p>A structured text report with:</p>
+  <ul>
+    <li>Per-member contribution summary</li>
+    <li>Suggested grade ranges based on data</li>
+    <li>Flags for low-contribution members</li>
+    <li>Peer review sentiment analysis</li>
+    <li>Professor-facing recommendations</li>
+  </ul>
+
+  <div class="callout"><strong>PRO only:</strong> The API route checks <code>isPro</code> before calling Anthropic. If the user is on FREE, it returns a 403 with an upgrade prompt.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 13 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">13</div>
+    <h2>Key UI Components</h2>
+  </div>
+
+  <h3>ProBadge — <code>src/components/ui/pro-badge.tsx</code></h3>
+  <p>Framer Motion entrance animation (<code>scale: 0.6 → 1</code>, <code>opacity: 0 → 1</code>). Two sizes: <code>sm</code> (default) and <code>md</code>. The animation duration is controlled by the <code>transition.duration</code> prop (currently <code>1.2s</code>).</p>
+
+  <h3>Sidebar — <code>src/app/dashboard/_components/Sidebar.tsx</code></h3>
+  <ul>
+    <li>Pure CSS hover-expand: <code>max-width</code> animates from <code>44px</code> to <code>208px</code></li>
+    <li>Keyboard shortcut <strong>Ctrl+B / ⌘B</strong> toggles pinned state (class <code>nc-sidebar-pinned</code>)</li>
+    <li>Text labels use <code>nc-sidebar-reveal</code> — <code>opacity: 0 → 1</code> + <code>max-width: 0 → 120px</code> on hover</li>
+    <li>Nav icons have hover animations: bounce, pop, wiggle, spin — defined per-route in the nav config</li>
+  </ul>
+
+  <h3>MobileNav — <code>src/app/dashboard/_components/MobileNav.tsx</code></h3>
+  <ul>
+    <li>Fixed 56px bar at top of viewport on mobile</li>
+    <li>Hamburger → full-screen overlay with staggered nav links</li>
+    <li>Keyboard <strong>Escape</strong> closes the overlay</li>
+    <li>Locks body scroll when overlay is open</li>
+  </ul>
+
+  <h3>SettingsModal — <code>src/app/dashboard/_components/SettingsModal.tsx</code></h3>
+  <ul>
+    <li>Theme picker (all 7 themes with live preview)</li>
+    <li>Sound effects toggle (persisted in localStorage)</li>
+    <li>Keyboard shortcuts overlay</li>
+    <li>Change password trigger</li>
+  </ul>
+
+  <h3>AvatarStatusCard — floating</h3>
+  <ul>
+    <li>Shows user's current status message + expiration countdown</li>
+    <li>Click to set a new status with time picker</li>
+    <li>Auto-clears when <code>statusExpiresAt</code> passes (checked on load)</li>
+  </ul>
+
+  <h3>DeadlinePicker — <code>src/components/ui/deadline-picker.tsx</code></h3>
+  <p>Combines <code>react-day-picker</code> calendar with a custom time input. Returns a full <code>DateTime</code> string for the API.</p>
+
+  <h3>AnimatedCounter — <code>src/components/AnimatedCounter.tsx</code></h3>
+  <p>Counts from 0 to target number on mount. Used in dashboard stat cards. Powered by a requestAnimationFrame loop with easing.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 14 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">14</div>
+    <h2>Landing Page</h2>
+  </div>
+
+  <p><code>src/app/page.tsx</code> — a client component (uses scroll reveal, 3D background, data fetching).</p>
+
+  <h3>Sections</h3>
+  <table>
+    <tr><th>Section</th><th>Notes</th></tr>
+    <tr><td>Hero</td><td>Headline + CTA buttons + social proof (shows only if testimonials exist)</td></tr>
+    <tr><td>Tech stack carousel</td><td><code>AutoScrollingClientCarousel</code> — infinite CSS scroll</td></tr>
+    <tr><td>User testimonials</td><td>Fetched from <code>/api/feedback</code>, tripled array for seamless loop</td></tr>
+    <tr><td>Problem cards</td><td>3 cards with live SVG animations (task overload, random grades, biased reviews)</td></tr>
+    <tr><td>Feature rows</td><td>6 features with animated Lucide-style SVG icons</td></tr>
+    <tr><td>For students / professors</td><td>Side-by-side benefit lists</td></tr>
+    <tr><td>Final CTA</td><td>Radial glow + sign-up button</td></tr>
+    <tr><td>Footer</td><td><code>FlickeringFooter</code> — animated flicker effect</td></tr>
+  </table>
+
+  <h3>Performance note</h3>
+  <p>The <code>EtherealShadow</code> (Three.js WebGL background) is skipped on mobile devices — detected via <code>window.matchMedia("(pointer: coarse)")</code>. This avoids GPU/battery issues on phones.</p>
+
+  <h3>LandingNav</h3>
+  <ul>
+    <li><strong>Desktop:</strong> flat bar — brand only, no links, simple border-bottom</li>
+    <li><strong>Mobile:</strong> floating frosted-glass pill — brand left + Pricing / Log in / Get started right. Fully static, no JS animation needed</li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 15 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">15</div>
+    <h2>Performance &amp; Security</h2>
+  </div>
+
+  <h3>Performance</h3>
+  <ul>
+    <li><strong>Server Components by default</strong> — only client components that need state/effects are marked <code>"use client"</code></li>
+    <li><strong>Image optimization</strong> — Next.js serves AVIF/WebP via <code>&lt;Image /&gt;</code>, 1-year CDN cache</li>
+    <li><strong>Bundle splitting</strong> — Three.js components are dynamically imported, not in the initial JS bundle</li>
+    <li><strong>CSS animations on touch devices disabled</strong> — <code>@media (pointer: coarse)</code> removes heavy animations on mobile</li>
+    <li><strong>ISR caching</strong> — public pages (pricing, terms, changelog) revalidate every 60s with 1hr stale</li>
+    <li><strong>No animation on preference</strong> — respects <code>prefers-reduced-motion</code></li>
+    <li><strong>Prisma connection pooling</strong> — max 3 connections via PgBouncer prevents serverless connection storms</li>
+  </ul>
+
+  <h3>Security</h3>
+  <ul>
+    <li><strong>Auth guard in layout</strong> — <code>dashboard/layout.tsx</code> redirects unauthenticated users server-side (not client-side)</li>
+    <li><strong>Supabase RLS</strong> — Row-Level Security on all tables; service role key only used server-side</li>
+    <li><strong>Stripe webhook signature</strong> — every webhook validated with <code>stripe.webhooks.constructEvent(rawBody, sig, secret)</code></li>
+    <li><strong>HTTP security headers</strong> on all routes: X-Frame-Options, nosniff, strict referrer, Permissions-Policy</li>
+    <li><strong>No secrets in client code</strong> — only <code>NEXT_PUBLIC_</code> prefixed vars reach the browser</li>
+    <li><strong>Soft deletes</strong> — projects and courses are never hard-deleted, only status-flagged</li>
+  </ul>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 16 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">16</div>
+    <h2>Tech Stack Summary</h2>
+  </div>
+
+  <table>
+    <tr><th>Category</th><th>Technology</th><th>Version</th></tr>
+    <tr><td>Framework</td><td>Next.js (App Router, Turbopack)</td><td>16.1.6</td></tr>
+    <tr><td>UI Library</td><td>React</td><td>19.2.3</td></tr>
+    <tr><td>Language</td><td>TypeScript</td><td>5</td></tr>
+    <tr><td>Styling</td><td>Tailwind CSS</td><td>4</td></tr>
+    <tr><td>Database</td><td>PostgreSQL</td><td>14+</td></tr>
+    <tr><td>ORM</td><td>Prisma</td><td>7.4.1</td></tr>
+    <tr><td>Auth</td><td>Supabase Auth (SSR)</td><td>2.97.0</td></tr>
+    <tr><td>Payments</td><td>Stripe</td><td>20.4.1</td></tr>
+    <tr><td>Email</td><td>Resend</td><td>—</td></tr>
+    <tr><td>AI</td><td>Anthropic Claude</td><td>—</td></tr>
+    <tr><td>3D Graphics</td><td>Three.js + R3F</td><td>0.183.1</td></tr>
+    <tr><td>Animations</td><td>Framer Motion</td><td>12.34.3</td></tr>
+    <tr><td>Icons</td><td>Lucide React</td><td>0.575.0</td></tr>
+    <tr><td>Components</td><td>shadcn/ui + Radix UI</td><td>—</td></tr>
+    <tr><td>Connection pooling</td><td>PgBouncer (via Supabase)</td><td>—</td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 17 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">17</div>
+    <h2>NPM Scripts</h2>
+  </div>
+
+<pre><code># Start development server (uses Turbopack)
+npm run dev
+
+# Production build (generates Prisma client first)
+npm run build
+
+# Serve production build
+npm run start
+
+# Run ESLint
+npm run lint
+
+# Database migrations (run locally, not in build)
+npx prisma migrate dev --name your_migration_name
+
+# Regenerate Prisma client after schema changes
+npx prisma generate
+
+# Open Prisma Studio (database GUI)
+npx prisma studio
+
+# Push schema changes without migration (for prototyping)
+npx prisma db push</code></pre>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ 18 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">18</div>
+    <h2>Extending the App</h2>
+  </div>
+
+  <h3>Adding a new dashboard page</h3>
+  <ol>
+    <li>Create <code>src/app/dashboard/yourpage/page.tsx</code></li>
+    <li>It automatically inherits the auth guard and shell from <code>dashboard/layout.tsx</code></li>
+    <li>Add a nav link in <code>src/app/dashboard/_components/NavLinks.tsx</code> (and <code>MobileNav.tsx</code> for mobile)</li>
+  </ol>
+
+  <h3>Adding a new API route</h3>
+  <ol>
+    <li>Create <code>src/app/api/yourroute/route.ts</code></li>
+    <li>Export named functions: <code>export async function GET(req: Request) {}</code></li>
+    <li>Always validate session first: <code>const { data: { user } } = await supabase.auth.getUser()</code></li>
+    <li>Return <code>NextResponse.json(data)</code> or <code>NextResponse.json({ error }, { status: 4xx })</code></li>
+  </ol>
+
+  <h3>Adding a new Prisma model</h3>
+  <ol>
+    <li>Edit <code>prisma/schema.prisma</code></li>
+    <li>Run <code>npx prisma migrate dev --name add_yourmodel</code></li>
+    <li>Run <code>npx prisma generate</code> — Prisma client types update automatically</li>
+  </ol>
+
+  <h3>Adding a new theme</h3>
+  <ol>
+    <li>Add <code>[data-theme="name"] { --th-* variables }</code> block to <code>globals.css</code></li>
+    <li>Add <code>"name"</code> to the themes array in <code>ThemeProvider.tsx</code></li>
+    <li>Add a swatch in <code>SettingsModal.tsx</code></li>
+  </ol>
+
+  <h3>Adding a Pro feature</h3>
+  <ol>
+    <li>In the API route, fetch the subscription: <code>const sub = await prisma.subscription.findUnique({ where: { userId } })</code></li>
+    <li>Check: <code>const isPro = sub?.plan === "PRO" && (sub.status === "active" || sub.status === "trialing")</code></li>
+    <li>Return 403 if not pro, with a descriptive error message</li>
+    <li>In the UI, use <code>isPro</code> prop (already passed down from layout) to show/hide upgrade prompts</li>
+  </ol>
+
+  <div class="callout">
+    <strong>Dev tip:</strong> When in doubt about where something renders, search for the CSS class or component name in <code>globals.css</code> — all custom styles are namespaced with <code>nc-</code> (NoCarry prefix), making them easy to find and trace.
+  </div>
+</div>
+
+<hr style="border: none; border-top: 2px solid #e2e8f0; margin: 60px 0 40px;" />
+
+<p style="text-align: center; color: #94a3b8; font-size: 12px; padding-bottom: 40px;">
+  NoCarry Technical Documentation &nbsp;·&nbsp; Generated 2026 &nbsp;·&nbsp; For internal developer use
+</p>
+
+</body>
+</html>

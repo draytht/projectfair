@@ -1,7 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// ── Coming Soon lock ──────────────────────────────────────────────
+// Set to false to restore normal access when ready to launch
+const COMING_SOON = true;
+
+const COMING_SOON_BYPASS = ["/coming-soon", "/_next", "/favicon", "/api"];
+
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (COMING_SOON) {
+    const bypassed = COMING_SOON_BYPASS.some((p) => pathname.startsWith(p));
+    if (!bypassed) {
+      return NextResponse.redirect(new URL("/coming-soon", request.url));
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -41,5 +57,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!coming-soon|_next|favicon\\.ico|.*\\..*).*)" ],
 };
