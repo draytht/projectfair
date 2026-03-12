@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type ProjectStub = {
   id: string;
@@ -290,11 +291,13 @@ function MiniProjectCard({ project, isProfessor, onUnlink }: { project: ProjectS
   const href = isProfessor ? `/dashboard/monitor/${project.id}` : `/dashboard/projects/${project.id}`;
   const [hovered, setHovered] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   async function handleUnlink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Unlink "${project.name}" from this course?`)) return;
+    const ok = await confirm({ title: `Unlink "${project.name}"?`, message: "This will remove the project from this course.", variant: "unlink" });
+    if (!ok) return;
     setUnlinking(true);
     const res = await fetch(`/api/projects/${project.id}/course`, {
       method: "PATCH",
@@ -311,6 +314,7 @@ function MiniProjectCard({ project, isProfessor, onUnlink }: { project: ProjectS
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {dialog}
       <Link
         href={href}
         style={{
@@ -472,10 +476,12 @@ function CourseAccordion({
 }) {
   const [open, setOpen] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm(`Delete course "${course.name}"? It will be moved to Trash and can be restored.`)) return;
+    const ok = await confirm({ title: `Delete "${course.name}"?`, message: "It will be moved to Trash and can be restored later.", variant: "delete" });
+    if (!ok) return;
     setDeleting(true);
     const res = await fetch(`/api/courses/${course.id}`, { method: "DELETE" });
     if (res.ok) onDelete(course.id);
@@ -492,6 +498,7 @@ function CourseAccordion({
         transition: "border-color 0.15s",
       }}
     >
+      {dialog}
       {/* Header */}
       <button
         onClick={() => setOpen((v) => !v)}

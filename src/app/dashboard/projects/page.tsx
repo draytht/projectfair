@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectDeadlineBadge } from "./_components/ProjectDeadlineBadge";
 import { sounds } from "@/lib/sounds";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type Member = { userId: string; role: string; user: { id: string; name: string } };
 type Project = {
@@ -51,6 +52,7 @@ function ProjectCard({
   onUnlinked: (id: string) => void;
 }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -58,7 +60,13 @@ function ProjectCard({
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Move "${project.name}" to Trash? You can restore it later.`)) return;
+    const ok = await confirm({
+      title: `Move "${project.name}" to Trash?`,
+      message: "You can restore it later.",
+      variant: "delete",
+      confirmLabel: "Move to Trash",
+    });
+    if (!ok) return;
     setDeleting(true);
     const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
     if (res.ok) { sounds.trash(); onDeleted(project.id); }
@@ -68,7 +76,12 @@ function ProjectCard({
   async function handleUnlink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Unlink "${project.name}" from course "${project.courseCode}"?`)) return;
+    const ok = await confirm({
+      title: `Unlink "${project.name}"?`,
+      message: `This will remove it from course "${project.courseCode}".`,
+      variant: "unlink",
+    });
+    if (!ok) return;
     setUnlinking(true);
     const res = await fetch(`/api/projects/${project.id}/course`, {
       method: "PATCH",
@@ -85,6 +98,7 @@ function ProjectCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {dialog}
       <Link
         href={`/dashboard/projects/${project.id}`}
         style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", boxSizing: "border-box" }}

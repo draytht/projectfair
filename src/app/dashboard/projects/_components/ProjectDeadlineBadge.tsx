@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const LEGEND = [
   { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Overdue", desc: "Deadline has passed" },
@@ -12,6 +13,8 @@ const LEGEND = [
 export function ProjectDeadlineBadge({ deadline }: { deadline: string }) {
   const [now, setNow] = useState(() => Date.now());
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  const badgeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -56,10 +59,19 @@ export function ProjectDeadlineBadge({ deadline }: { deadline: string }) {
     hour: "2-digit", minute: "2-digit",
   });
 
+  function handleMouseEnter() {
+    if (badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      setTooltipPos({ top: rect.bottom + 6, left: rect.left });
+    }
+    setShowTooltip(true);
+  }
+
   return (
     <div
-      style={{ position: "relative", display: "inline-flex", marginTop: 4 }}
-      onMouseEnter={() => setShowTooltip(true)}
+      ref={badgeRef}
+      style={{ display: "inline-flex", marginTop: 4 }}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setShowTooltip(false)}
     >
       {/* Badge */}
@@ -90,14 +102,14 @@ export function ProjectDeadlineBadge({ deadline }: { deadline: string }) {
         </svg>
       </div>
 
-      {/* Tooltip */}
-      {showTooltip && (
+      {/* Tooltip — portaled to body so overflow:hidden on the card doesn't clip it */}
+      {showTooltip && createPortal(
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            left: 0,
-            zIndex: 50,
+            position: "fixed",
+            top: tooltipPos.top,
+            left: tooltipPos.left,
+            zIndex: 9999,
             background: "var(--th-card)",
             border: "1px solid var(--th-border)",
             borderRadius: 10,
@@ -133,7 +145,8 @@ export function ProjectDeadlineBadge({ deadline }: { deadline: string }) {
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

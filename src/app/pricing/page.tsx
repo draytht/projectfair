@@ -7,7 +7,7 @@ type AuthState = { loading: true } | { loading: false; userId: string | null; pl
 type Prices = { monthly: string; annual: string } | null;
 
 const FEATURES = [
-  { label: "Courses",               free: "2",          pro: "20" },
+  { label: "Courses",               free: "2",          pro: "10" },
   { label: "Projects",              free: "2",          pro: "20" },
   { label: "Kanban task board",     free: true,         pro: true },
   { label: "Peer review system",    free: true,         pro: true },
@@ -262,7 +262,7 @@ export default function PricingPage() {
             </div>
             {renderProCTA()}
             <ul style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
-              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 20 courses</li>
+              <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 10 courses</li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Up to 20 projects</li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />All core features</li>
               <li style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}><Check />Priority support</li>

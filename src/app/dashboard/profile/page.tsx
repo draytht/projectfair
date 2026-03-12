@@ -310,6 +310,18 @@ export default function ProfilePage() {
             </p>
           )}
           <div className="flex flex-wrap gap-3 mt-2">
+            {profile.email && (
+              <a
+                href={`mailto:${profile.email}`}
+                style={{ color: "var(--th-accent)", border: "1px solid color-mix(in srgb,var(--th-border) 80%,transparent)", borderRadius: 6, padding: "2px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+                className="hover:opacity-70 transition"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+                {profile.email}
+              </a>
+            )}
             {profile.githubUrl && (
               <a
                 href={profile.githubUrl}
