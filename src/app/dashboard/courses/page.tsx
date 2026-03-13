@@ -480,7 +480,7 @@ function CourseAccordion({
 
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    const ok = await confirm({ title: `Delete "${course.name}"?`, message: "It will be moved to Trash and can be restored later.", variant: "delete" });
+    const ok = await confirm({ title: `Delete "${course.name}"?`, message: "It will be moved to Trash and can be restored later.", variant: "delete", confirmText: course.name });
     if (!ok) return;
     setDeleting(true);
     const res = await fetch(`/api/courses/${course.id}`, { method: "DELETE" });

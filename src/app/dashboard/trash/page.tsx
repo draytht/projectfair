@@ -69,7 +69,8 @@ export default function TrashPage() {
   }
 
   async function permanentDeleteProject(id: string) {
-    const ok = await confirm({ title: "Permanently delete project?", message: "This cannot be undone. The project will be gone forever.", variant: "delete", confirmLabel: "Delete Forever" });
+    const name = projects.find((p) => p.id === id)?.name;
+    const ok = await confirm({ title: "Permanently delete project?", message: "This cannot be undone. The project will be gone forever.", variant: "delete", confirmLabel: "Delete Forever", confirmText: name });
     if (!ok) return;
     setWorking(id);
     const res = await fetch(`/api/trash/projects/${id}`, { method: "DELETE" });
@@ -85,7 +86,8 @@ export default function TrashPage() {
   }
 
   async function permanentDeleteCourse(id: string) {
-    const ok = await confirm({ title: "Permanently delete course?", message: "This cannot be undone. The course and its data will be gone forever.", variant: "delete", confirmLabel: "Delete Forever" });
+    const name = courses.find((c) => c.id === id)?.name;
+    const ok = await confirm({ title: "Permanently delete course?", message: "This cannot be undone. The course and its data will be gone forever.", variant: "delete", confirmLabel: "Delete Forever", confirmText: name });
     if (!ok) return;
     setWorking(id);
     const res = await fetch(`/api/trash/courses/${id}`, { method: "DELETE" });

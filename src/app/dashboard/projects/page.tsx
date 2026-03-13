@@ -65,6 +65,7 @@ function ProjectCard({
       message: "You can restore it later.",
       variant: "delete",
       confirmLabel: "Move to Trash",
+      confirmText: project.name,
     });
     if (!ok) return;
     setDeleting(true);

@@ -549,7 +549,7 @@ export default function ProjectPage() {
   }
 
   async function deleteProject() {
-    const ok = await confirm({ title: "Delete this project?", message: "It will be moved to Trash. You can restore it within 30 days.", variant: "delete" });
+    const ok = await confirm({ title: "Delete this project?", message: "It will be moved to Trash. You can restore it within 30 days.", variant: "delete", confirmText: project?.name });
     if (!ok) return;
     sounds.trash();
     setDangerWorking(true);
@@ -563,6 +563,7 @@ export default function ProjectPage() {
       title: "Terminate this project?",
       message: "This will permanently delete the project for you and all team members. This cannot be undone.",
       variant: "terminate",
+      confirmText: project?.name,
     });
     if (!ok) return;
     sounds.trash();

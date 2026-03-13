@@ -13,6 +13,8 @@ export interface ConfirmOptions {
   variant?: ConfirmVariant;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** If provided, user must type this exact string before confirming */
+  confirmText?: string;
 }
 
 interface ConfirmDialogProps extends ConfirmOptions {
@@ -134,21 +136,32 @@ export function ConfirmDialog({
   variant = "delete",
   confirmLabel,
   cancelLabel = "Cancel",
+  confirmText,
 }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
+  const [typedText, setTypedText] = useState("");
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const color = VARIANT_COLORS[variant];
   const label = confirmLabel ?? DEFAULT_LABELS[variant];
   const Icon  = VARIANT_ICON[variant];
 
-  // Auto-focus confirm button when opened
+  // Reset typed text when dialog opens/closes
+  useEffect(() => {
+    if (!open) setTypedText("");
+  }, [open]);
+
+  // Auto-focus input (if confirmText required) or confirm button
   useEffect(() => {
     if (open) {
-      const t = setTimeout(() => confirmBtnRef.current?.focus(), 60);
+      const t = setTimeout(() => {
+        if (confirmText) inputRef.current?.focus();
+        else confirmBtnRef.current?.focus();
+      }, 60);
       return () => clearTimeout(t);
     }
-  }, [open]);
+  }, [open, confirmText]);
 
   // Escape to close
   useEffect(() => {
@@ -255,6 +268,39 @@ export function ConfirmDialog({
                 {message}
               </p>
             )}
+
+            {/* Name confirmation input */}
+            {confirmText && (
+              <div style={{ marginTop: 18 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--th-text-2)" }}>
+                  Type <span style={{ fontWeight: 700, color: "var(--th-text)", fontFamily: "monospace" }}>{confirmText}</span> to confirm:
+                </p>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && typedText === confirmText && !busy) handleConfirm();
+                  }}
+                  placeholder={confirmText}
+                  disabled={busy}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: `1.5px solid ${typedText && typedText !== confirmText ? "#ef4444" : "var(--th-border)"}`,
+                    background: "var(--th-bg)",
+                    color: "var(--th-text)",
+                    fontSize: 13.5,
+                    fontFamily: "monospace",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s",
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -287,15 +333,15 @@ export function ConfirmDialog({
             <button
               ref={confirmBtnRef}
               onClick={handleConfirm}
-              disabled={busy}
+              disabled={busy || (confirmText !== undefined && typedText !== confirmText)}
               style={{
                 padding: "8px 18px", borderRadius: 9,
                 border: "none",
                 background: isAccent ? "var(--th-accent)" : color,
                 color: isAccent ? "var(--th-accent-fg)" : "#fff",
                 fontSize: 13.5, fontWeight: 600,
-                cursor: busy ? "not-allowed" : "pointer",
-                opacity: busy ? 0.78 : 1,
+                cursor: (busy || (confirmText !== undefined && typedText !== confirmText)) ? "not-allowed" : "pointer",
+                opacity: (busy || (confirmText !== undefined && typedText !== confirmText)) ? 0.4 : 1,
                 transition: "opacity 0.15s, filter 0.15s",
                 display: "flex", alignItems: "center", gap: 6,
                 fontFamily: "inherit",
@@ -376,6 +422,7 @@ export function useConfirm() {
       variant={pending.variant}
       confirmLabel={pending.confirmLabel}
       cancelLabel={pending.cancelLabel}
+      confirmText={pending.confirmText}
     />
   ) : null;
 
