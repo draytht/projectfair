@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ function SpinnerIcon() {
   );
 }
 
-const VARIANT_ICON: Record<ConfirmVariant, () => JSX.Element> = {
+const VARIANT_ICON: Record<ConfirmVariant, () => React.JSX.Element> = {
   delete:    DeleteIcon,
   unlink:    UnlinkIcon,
   restore:   RestoreIcon,
