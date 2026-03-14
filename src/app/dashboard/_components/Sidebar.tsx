@@ -170,7 +170,13 @@ export function Sidebar({
             className="nc-sidebar-user"
             style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 12 }}
           >
-            <Avatar url={avatarUrl} name={name} size={28} />
+            <button
+              onClick={() => router.push("/dashboard/profile")}
+              title="Go to profile"
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}
+            >
+              <Avatar url={avatarUrl} name={name} size={28} />
+            </button>
             <div className="nc-sidebar-reveal-block" style={{ minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <p style={{ color: "var(--th-text)", fontSize: "0.75rem", fontWeight: 500 }} className="truncate">{name}</p>
