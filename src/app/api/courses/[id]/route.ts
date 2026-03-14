@@ -16,6 +16,13 @@ export async function DELETE(
   if (!course) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (course.ownerId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.course.update({ where: { id }, data: { deletedAt: new Date() } });
+  await prisma.$transaction([
+    // Unlink all projects that belong to this course
+    prisma.project.updateMany({
+      where: { courseId: id },
+      data: { courseId: null, courseCode: null },
+    }),
+    prisma.course.update({ where: { id }, data: { deletedAt: new Date() } }),
+  ]);
   return NextResponse.json({ ok: true });
 }

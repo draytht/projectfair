@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectDeadlineBadge } from "./_components/ProjectDeadlineBadge";
 import { sounds } from "@/lib/sounds";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type Member = { userId: string; role: string; user: { id: string; name: string } };
 type Project = {
@@ -29,27 +30,67 @@ function TrashIcon() {
   );
 }
 
+function UnlinkIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  );
+}
+
 function ProjectCard({
   project,
   isLeader,
   onDeleted,
+  onUnlinked,
 }: {
   project: Project;
   isLeader: boolean;
   onDeleted: (id: string) => void;
+  onUnlinked: (id: string) => void;
 }) {
   const router = useRouter();
+  const { confirm, dialog } = useConfirm();
   const [deleting, setDeleting] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
   const [hovered, setHovered] = useState(false);
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Move "${project.name}" to Trash? You can restore it later.`)) return;
+    const ok = await confirm({
+      title: `Move "${project.name}" to Trash?`,
+      message: "You can restore it later.",
+      variant: "delete",
+      confirmLabel: "Move to Trash",
+      confirmText: project.name,
+    });
+    if (!ok) return;
     setDeleting(true);
     const res = await fetch(`/api/projects/${project.id}`, { method: "DELETE" });
     if (res.ok) { sounds.trash(); onDeleted(project.id); }
     else setDeleting(false);
+  }
+
+  async function handleUnlink(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const ok = await confirm({
+      title: `Unlink "${project.name}"?`,
+      message: `This will remove it from course "${project.courseCode}".`,
+      variant: "unlink",
+    });
+    if (!ok) return;
+    setUnlinking(true);
+    const res = await fetch(`/api/projects/${project.id}/course`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: null }),
+    });
+    if (res.ok) { onUnlinked(project.id); }
+    else setUnlinking(false);
   }
 
   return (
@@ -58,6 +99,7 @@ function ProjectCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {dialog}
       <Link
         href={`/dashboard/projects/${project.id}`}
         style={{ background: "var(--th-card)", border: "1px solid var(--th-border)", display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", boxSizing: "border-box" }}
@@ -91,6 +133,49 @@ function ProjectCard({
           </p>
         </div>
       </Link>
+
+      {/* Unlink button — shows on card hover for any member, when linked to a course */}
+      {project.courseCode && (
+        <button
+          onClick={handleUnlink}
+          disabled={unlinking}
+          title={`Unlink from ${project.courseCode}`}
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 44,
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "var(--th-card)",
+            border: "1px solid var(--th-border)",
+            borderRadius: 7,
+            cursor: unlinking ? "not-allowed" : "pointer",
+            color: "var(--th-text-2)",
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.15s, color 0.14s, border-color 0.14s, background 0.14s",
+            zIndex: 2,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#f59e0b";
+            e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)";
+            e.currentTarget.style.background = "rgba(245,158,11,0.08)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--th-text-2)";
+            e.currentTarget.style.borderColor = "var(--th-border)";
+            e.currentTarget.style.background = "var(--th-card)";
+          }}
+        >
+          {unlinking ? (
+            <span style={{ fontSize: 10, fontWeight: 700 }}>…</span>
+          ) : (
+            <UnlinkIcon />
+          )}
+        </button>
+      )}
 
       {/* Delete button — shows on card hover, leader only */}
       {isLeader && (
@@ -160,6 +245,10 @@ export default function ProjectsPage() {
 
   function handleDeleted(id: string) {
     setProjects((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function handleUnlinked(id: string) {
+    setProjects((prev) => prev.map((p) => p.id === id ? { ...p, courseCode: null } : p));
   }
 
   if (loading) {
@@ -232,6 +321,7 @@ export default function ProjectsPage() {
                 project={project}
                 isLeader={isLeader ?? false}
                 onDeleted={handleDeleted}
+                onUnlinked={handleUnlinked}
               />
             );
           })}

@@ -36,6 +36,13 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found in trash" }, { status: 404 });
   }
 
-  await prisma.course.delete({ where: { id } });
+  await prisma.$transaction([
+    // Clear courseCode since onDelete: SetNull only handles the courseId FK
+    prisma.project.updateMany({
+      where: { courseId: id },
+      data: { courseCode: null },
+    }),
+    prisma.course.delete({ where: { id } }),
+  ]);
   return NextResponse.json({ ok: true });
 }

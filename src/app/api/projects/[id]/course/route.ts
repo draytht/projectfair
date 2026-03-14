@@ -15,25 +15,36 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { ownerId: true },
+    select: {
+      ownerId: true,
+      courseId: true,
+      members: { select: { userId: true } },
+    },
   });
 
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
   const userOwnsProject = project.ownerId === user.id;
+  const userIsMember = project.members.some((m) => m.userId === user.id);
 
-  // Also allow the owner of the target course to link projects to it
-  let userOwnsCourse = false;
-  if (!userOwnsProject && courseId) {
-    const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: { ownerId: true },
-    });
-    userOwnsCourse = course?.ownerId === user.id;
-  }
-
-  if (!userOwnsProject && !userOwnsCourse) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Any project member can unlink (courseId: null). Only owner/course-owner can link.
+  if (courseId === null || courseId === undefined) {
+    if (!userOwnsProject && !userIsMember) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else {
+    // Linking — allow project owner or the target course owner
+    let userOwnsCourse = false;
+    if (!userOwnsProject) {
+      const course = await prisma.course.findUnique({
+        where: { id: courseId },
+        select: { ownerId: true },
+      });
+      userOwnsCourse = course?.ownerId === user.id;
+    }
+    if (!userOwnsProject && !userOwnsCourse) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   const updated = await prisma.project.update({

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sounds } from "@/lib/sounds";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type TrashedProject = {
   id: string;
@@ -44,6 +45,7 @@ function EmptyState() {
 
 export default function TrashPage() {
   const router = useRouter();
+  const { confirm, dialog } = useConfirm();
   const [projects, setProjects] = useState<TrashedProject[]>([]);
   const [courses, setCourses] = useState<TrashedCourse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,9 @@ export default function TrashPage() {
   }
 
   async function permanentDeleteProject(id: string) {
-    if (!confirm("Permanently delete this project? This cannot be undone.")) return;
+    const name = projects.find((p) => p.id === id)?.name;
+    const ok = await confirm({ title: "Permanently delete project?", message: "This cannot be undone. The project will be gone forever.", variant: "delete", confirmLabel: "Delete Forever", confirmText: name });
+    if (!ok) return;
     setWorking(id);
     const res = await fetch(`/api/trash/projects/${id}`, { method: "DELETE" });
     if (res.ok) setProjects((prev) => prev.filter((p) => p.id !== id));
@@ -82,7 +86,9 @@ export default function TrashPage() {
   }
 
   async function permanentDeleteCourse(id: string) {
-    if (!confirm("Permanently delete this course? This cannot be undone.")) return;
+    const name = courses.find((c) => c.id === id)?.name;
+    const ok = await confirm({ title: "Permanently delete course?", message: "This cannot be undone. The course and its data will be gone forever.", variant: "delete", confirmLabel: "Delete Forever", confirmText: name });
+    if (!ok) return;
     setWorking(id);
     const res = await fetch(`/api/trash/courses/${id}`, { method: "DELETE" });
     if (res.ok) setCourses((prev) => prev.filter((c) => c.id !== id));
@@ -93,6 +99,7 @@ export default function TrashPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {dialog}
       {/* Back */}
       <div style={{ marginBottom: 20 }}>
         <button

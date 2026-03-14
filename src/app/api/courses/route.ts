@@ -9,7 +9,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const courses = await prisma.course.findMany({
+    // Courses the user owns
+    const ownedCourses = await prisma.course.findMany({
       where: { ownerId: user.id, deletedAt: null },
       orderBy: { createdAt: "asc" },
       include: {
@@ -25,7 +26,45 @@ export async function GET() {
         },
       },
     });
-    return NextResponse.json(courses);
+
+    // Courses where user has a project enrolled (but doesn't own the course)
+    const ownedCourseIds = new Set(ownedCourses.map((c) => c.id));
+    const enrolledCourses = await prisma.course.findMany({
+      where: {
+        deletedAt: null,
+        ownerId: { not: user.id },
+        projects: {
+          some: {
+            deletedAt: null,
+            status: { not: "DELETED" },
+            members: { some: { userId: user.id } },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      include: {
+        // Only include the projects that belong to this user
+        projects: {
+          where: {
+            deletedAt: null,
+            status: { not: "DELETED" },
+            members: { some: { userId: user.id } },
+          },
+          select: {
+            id: true,
+            name: true,
+            courseCode: true,
+            members: { select: { user: { select: { id: true, name: true } } } },
+            tasks: { select: { status: true } },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      owned: ownedCourses,
+      enrolled: enrolledCourses.filter((c) => !ownedCourseIds.has(c.id)),
+    });
   } catch {
     return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
   }

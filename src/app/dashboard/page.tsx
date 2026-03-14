@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { ProBadge } from "@/components/ui/pro-badge";
+import { MobileCourseSlider } from "./_components/MobileCourseSlider";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data fetching
@@ -29,17 +30,17 @@ export default async function DashboardPage() {
     subscription?.plan === "PRO" &&
     (subscription?.status === "active" || subscription?.status === "trialing");
 
-  // Courses (all roles)
+  // Courses (all roles) — exclude soft-deleted
   const courses = await prisma.course.findMany({
-    where: { ownerId: user.id },
+    where: { ownerId: user.id, deletedAt: null },
     orderBy: { createdAt: "asc" },
-    include: { projects: { select: { id: true } } },
+    include: { projects: { select: { id: true }, where: { deletedAt: null, archivedAt: null } } },
   });
 
   // ── Student / Team Leader ──────────────────────────────────────────────────
   if (role === "STUDENT" || role === "TEAM_LEADER") {
     const memberships = await prisma.projectMember.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, project: { deletedAt: null, archivedAt: null } },
       include: { project: { include: { tasks: true, members: true } } },
       orderBy: { joinedAt: "desc" },
     });
@@ -93,7 +94,7 @@ export default async function DashboardPage() {
   // ── Professor ──────────────────────────────────────────────────────────────
   if (role === "PROFESSOR") {
     const memberships = await prisma.projectMember.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, project: { deletedAt: null, archivedAt: null } },
       include: { project: { include: { tasks: true, members: { include: { user: true } } } } },
     });
     const projects = memberships.map((m) => m.project);
@@ -311,46 +312,54 @@ function Dashboard({
             </Link>
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
-            {courses.map((c) => (
+          <>
+            {/* Mobile: Tinder-style swipe slider */}
+            <div className="md:hidden">
+              <MobileCourseSlider courses={courses} />
+            </div>
+
+            {/* Desktop: horizontal scroll */}
+            <div className="hidden md:flex" style={{ gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+              {courses.map((c) => (
+                <Link
+                  key={c.id}
+                  href="/dashboard/courses"
+                  style={{
+                    background: "var(--th-bg)", border: "1px solid var(--th-border)",
+                    borderRadius: 12, padding: "12px 14px", textDecoration: "none",
+                    flexShrink: 0, minWidth: 140, maxWidth: 180,
+                    transition: "border-color 0.15s, transform 0.15s",
+                    display: "block",
+                  }}
+                  className="nc-card-hover"
+                >
+                  <p style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
+                    {c.code}
+                  </p>
+                  <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 6 }}>
+                    {c.name}
+                  </p>
+                  <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>
+                    {c.projectCount} project{c.projectCount !== 1 ? "s" : ""}
+                  </p>
+                </Link>
+              ))}
+              {/* Add course chip */}
               <Link
-                key={c.id}
                 href="/dashboard/courses"
                 style={{
-                  background: "var(--th-bg)", border: "1px solid var(--th-border)",
-                  borderRadius: 12, padding: "12px 14px", textDecoration: "none",
-                  flexShrink: 0, minWidth: 140, maxWidth: 180,
-                  transition: "border-color 0.15s, transform 0.15s",
-                  display: "block",
+                  border: "1.5px dashed var(--th-border)", borderRadius: 12,
+                  padding: "12px 14px", textDecoration: "none", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  minWidth: 100, transition: "border-color 0.15s, color 0.15s",
+                  color: "var(--th-text-2)", fontSize: "0.75rem", fontWeight: 600,
                 }}
-                className="nc-card-hover"
+                className="hover:opacity-70 transition"
               >
-                <p style={{ color: "var(--th-accent)", fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
-                  {c.code}
-                </p>
-                <p style={{ color: "var(--th-text)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.3, marginBottom: 6 }}>
-                  {c.name}
-                </p>
-                <p style={{ color: "var(--th-text-2)", fontSize: "0.6875rem" }}>
-                  {c.projectCount} project{c.projectCount !== 1 ? "s" : ""}
-                </p>
+                + New
               </Link>
-            ))}
-            {/* Add course chip */}
-            <Link
-              href="/dashboard/courses"
-              style={{
-                border: "1.5px dashed var(--th-border)", borderRadius: 12,
-                padding: "12px 14px", textDecoration: "none", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                minWidth: 100, transition: "border-color 0.15s, color 0.15s",
-                color: "var(--th-text-2)", fontSize: "0.75rem", fontWeight: 600,
-              }}
-              className="hover:opacity-70 transition"
-            >
-              + New
-            </Link>
-          </div>
+            </div>
+          </>
         )}
       </div>
 

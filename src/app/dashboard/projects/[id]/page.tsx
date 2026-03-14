@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { sounds } from "@/lib/sounds";
 import ProjectChat from "./_components/ProjectChat";
 import { DeadlinePicker } from "@/components/ui/deadline-picker";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type User = { id: string; name: string; preferredName?: string | null; avatarUrl?: string | null };
 
@@ -85,6 +86,7 @@ type Project = {
   courseCode: string | null;
   description: string | null;
   deadline: string | null;
+  ownerId: string;
   members: Member[];
   tasks: Task[];
 };
@@ -231,6 +233,7 @@ type EditState = {
 export default function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { confirm, dialog } = useConfirm();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -447,7 +450,8 @@ export default function ProjectPage() {
   }
 
   async function kickMember(memberId: string) {
-    if (!confirm("Remove this member from the project?")) return;
+    const ok = await confirm({ title: "Remove member?", message: "This member will lose access to the project.", variant: "delete", confirmLabel: "Remove" });
+    if (!ok) return;
     const res = await fetch(`/api/projects/${id}/members/${memberId}`, { method: "DELETE" });
     if (res.ok) {
       setProject((prev) =>
@@ -457,7 +461,8 @@ export default function ProjectPage() {
   }
 
   async function leaveProject(memberId: string) {
-    if (!confirm("Leave this project? You will lose access.")) return;
+    const ok = await confirm({ title: "Leave this project?", message: "You will lose access and cannot rejoin unless re-invited.", variant: "delete", confirmLabel: "Leave" });
+    if (!ok) return;
     const res = await fetch(`/api/projects/${id}/members/${memberId}`, { method: "DELETE" });
     if (res.ok) router.push("/dashboard/projects");
   }
@@ -530,7 +535,8 @@ export default function ProjectPage() {
   }
 
   async function markProjectDone() {
-    if (!confirm("Mark this project as complete? It will move to your Archive.")) return;
+    const ok = await confirm({ title: "Mark as complete?", message: "This project will be archived. You can still view it in Archive.", variant: "update", confirmLabel: "Mark Complete" });
+    if (!ok) return;
     sounds.complete();
     setDangerWorking(true);
     const res = await fetch(`/api/projects/${id}`, {
@@ -543,10 +549,26 @@ export default function ProjectPage() {
   }
 
   async function deleteProject() {
-    if (!confirm("Delete this project? It will be moved to Trash and can be restored within 30 days.")) return;
+    const ok = await confirm({ title: "Delete this project?", message: "It will be moved to Trash. You can restore it within 30 days.", variant: "delete", confirmText: project?.name });
+    if (!ok) return;
     sounds.trash();
     setDangerWorking(true);
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    if (res.ok) router.push("/dashboard/projects");
+    else setDangerWorking(false);
+  }
+
+  async function terminateProject() {
+    const ok = await confirm({
+      title: "Terminate this project?",
+      message: "This will permanently delete the project for you and all team members. This cannot be undone.",
+      variant: "terminate",
+      confirmText: project?.name,
+    });
+    if (!ok) return;
+    sounds.trash();
+    setDangerWorking(true);
+    const res = await fetch(`/api/projects/${id}/terminate`, { method: "POST" });
     if (res.ok) router.push("/dashboard/projects");
     else setDangerWorking(false);
   }
@@ -597,6 +619,7 @@ export default function ProjectPage() {
 
   return (
     <div>
+      {dialog}
       {/* Back button */}
       <div style={{ marginBottom: 20 }}>
         <button
@@ -1432,6 +1455,7 @@ export default function ProjectPage() {
       {(() => {
         const myMember = project.members.find((m) => m.user.id === currentUserId);
         if (myMember?.role !== "TEAM_LEADER") return null;
+        const isOwner = project.ownerId === currentUserId;
         return (
           <div style={{ marginTop: 40, border: "1px solid rgba(239,68,68,0.2)", borderRadius: 14, padding: "20px 24px", background: "rgba(239,68,68,0.03)" }}>
             <p style={{ color: "#ef4444", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
@@ -1463,6 +1487,25 @@ export default function ProjectPage() {
                 </svg>
                 Move to Trash
               </button>
+
+              {/* Terminate — owner only */}
+              {isOwner && (
+                <button
+                  onClick={terminateProject}
+                  disabled={dangerWorking}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, border: "1.5px solid #ef4444", background: "#ef4444", color: "#fff", fontSize: 12, fontWeight: 700, cursor: dangerWorking ? "not-allowed" : "pointer", opacity: dangerWorking ? 0.6 : 1, transition: "filter 0.14s", letterSpacing: "0.02em" }}
+                  onMouseEnter={(e) => { if (!dangerWorking) e.currentTarget.style.filter = "brightness(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.filter = "none"; }}
+                  title="Permanently deletes the project for all members. Owner only."
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3"/>
+                  </svg>
+                  Terminate Project
+                </button>
+              )}
             </div>
           </div>
         );

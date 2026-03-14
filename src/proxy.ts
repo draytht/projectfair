@@ -2,8 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // ── Coming Soon lock ──────────────────────────────────────────────
-// Set to false to restore normal access when ready to launch
-const COMING_SOON = true;
+// Automatically disabled in development; set to false when ready to launch
+const COMING_SOON = process.env.NODE_ENV === "production";
 
 const COMING_SOON_BYPASS = ["/coming-soon", "/_next", "/favicon", "/api"];
 

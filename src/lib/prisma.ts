@@ -8,11 +8,10 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const pool = new Pool({
-    // Use the PgBouncer-pooled URL for all runtime queries.
-    // DIRECT_URL is reserved for migrations (prisma.config.ts).
-    connectionString: process.env.DATABASE_URL,
-    // Keep the pg.Pool small — PgBouncer handles the real pooling.
-    max: 3,
+    // Use the direct URL — pg.Pool handles connection pooling at the Node level.
+    // DATABASE_URL (pgbouncer) is not compatible with the driver adapter.
+    connectionString: process.env.DIRECT_URL,
+    max: 10,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });

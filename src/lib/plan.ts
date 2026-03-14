@@ -1,8 +1,8 @@
 import { prisma } from "./prisma";
 
 export const PLAN_LIMITS = {
-  FREE: { courses: 2, projects: 2 },
-  PRO:  { courses: 20, projects: 20 },
+  FREE: { courses: 2,  projects: 2  },
+  PRO:  { courses: 10, projects: 20 },
 } as const;
 
 export type PlanName = keyof typeof PLAN_LIMITS;

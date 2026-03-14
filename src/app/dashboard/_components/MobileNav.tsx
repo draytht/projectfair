@@ -28,19 +28,29 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Courses",
-    href: "/dashboard/courses",
+    label: "Profile",
+    href: "/dashboard/profile",
     exact: false,
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M4 15.5V4.5A1.5 1.5 0 015.5 3H16v13H5.5A1.5 1.5 0 014 15.5z" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M4 15.5A1.5 1.5 0 005.5 17H16v-1" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M7 7h6M7 10h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="10" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     ),
   },
   {
-    label: "Projects",
+    label: "My Courses",
+    href: "/dashboard/courses",
+    exact: false,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 4.5C8 3 3.5 3 2 3.75v9.5c1.5-.75 6-.75 8 .75 2-1.5 6.5-1.5 8-.75V3.75C16.5 3 12 3 10 4.5z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="10" y1="4.5" x2="10" y2="14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "My Projects",
     href: "/dashboard/projects",
     exact: false,
     icon: (
@@ -69,13 +79,28 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: "Profile",
-    href: "/dashboard/profile",
+    label: "Archive",
+    href: "/dashboard/archive",
     exact: false,
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <rect x="2" y="5" width="16" height="2.5" rx="1" stroke="currentColor" strokeWidth="1.6" />
+        <rect x="2.5" y="7.5" width="15" height="10" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+        <line x1="7.5" y1="12.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "Trash",
+    href: "/dashboard/trash",
+    exact: false,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <line x1="3" y1="5.5" x2="17" y2="5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M7.5 5.5V4.2a1 1 0 011-1h3a1 1 0 011 1v1.3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M5 5.5l.8 10a1.2 1.2 0 001.2 1.1h6a1.2 1.2 0 001.2-1.1L15 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="8" y1="9" x2="8" y2="13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="12" y1="9" x2="12" y2="13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     ),
   },
