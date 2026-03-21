@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.5.0",
     "@radix-ui/react-slot": "^1.2.4",
