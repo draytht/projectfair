@@ -65,6 +65,7 @@ export function Component({
 
     const [isMobile, setIsMobile] = React.useState(false);
     const feColorMatrixRef = useRef<SVGFEColorMatrixElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setIsMobile(window.matchMedia("(pointer: coarse)").matches);
@@ -77,29 +78,39 @@ export function Component({
     useEffect(() => {
         if (!animationEnabled || !feColorMatrixRef.current) return;
 
-        // Full hue rotation cycle in milliseconds
         const cycleDurationMs = (animationDuration / 25) * 1000;
 
         let rafId: number;
         let lastUpdateMs = 0;
+        let isVisible = true;
+        let isTabVisible = true;
 
         function tick(nowMs: number) {
             rafId = requestAnimationFrame(tick);
-
-            // Skip this frame if not enough time has passed — this is what
-            // caps the filter recalculation at FILTER_UPDATE_FPS instead of
-            // the display's native refresh rate (60/120/144 Hz).
+            if (!isVisible || !isTabVisible) return;
             if (nowMs - lastUpdateMs < FILTER_INTERVAL_MS) return;
             lastUpdateMs = nowMs;
-
-            // Time-based hue so the animation stays in sync with wall-clock
-            // even when frames are skipped.
             const hue = (nowMs / cycleDurationMs * 360) % 360;
             feColorMatrixRef.current?.setAttribute("values", String(hue));
         }
 
         rafId = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(rafId);
+
+        const io = new IntersectionObserver(([entry]) => {
+            isVisible = entry.isIntersecting;
+        });
+        if (containerRef.current) io.observe(containerRef.current);
+
+        function onVisibilityChange() {
+            isTabVisible = document.visibilityState === "visible";
+        }
+        document.addEventListener("visibilitychange", onVisibilityChange);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            io.disconnect();
+            document.removeEventListener("visibilitychange", onVisibilityChange);
+        };
     }, [animationEnabled, animationDuration]);
 
     // Mobile: lightweight static gradient — no SVG filters, fully GPU-composited.
@@ -121,6 +132,7 @@ export function Component({
 
     return (
         <div
+            ref={containerRef}
             className={className}
             style={{
                 overflow: "hidden",
