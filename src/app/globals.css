@@ -547,8 +547,19 @@ button, a, [role="button"] { touch-action: manipulation; }
   opacity: 1;
 }
 
+/* Problem cards — hover lift in CSS to avoid JS style mutation */
+.nc-problem-card {
+  will-change: transform;
+  transition: border-color 0.2s, transform 0.2s cubic-bezier(0.16,1,0.3,1);
+}
+.nc-problem-card:hover {
+  border-color: color-mix(in srgb, var(--th-accent) 40%, var(--th-border)) !important;
+  transform: translateY(-3px);
+}
+
 /* 3D lift for CTA links (landing page buttons) */
 .nc-btn-3d {
+  will-change: transform;
   box-shadow: 0 4px 0 rgba(0,0,0,0.28), 0 2px 12px rgba(0,0,0,0.14) !important;
   transition: transform 0.12s cubic-bezier(0.16,1,0.3,1), box-shadow 0.12s ease, opacity 0.15s ease !important;
 }
