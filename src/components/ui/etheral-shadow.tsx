@@ -83,7 +83,7 @@ export function Component({
         let rafId: number;
         let lastUpdateMs = 0;
         let isVisible = true;
-        let isTabVisible = true;
+        let isTabVisible = document.visibilityState === "visible";
 
         function tick(nowMs: number) {
             rafId = requestAnimationFrame(tick);
