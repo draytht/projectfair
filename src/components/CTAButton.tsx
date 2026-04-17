@@ -33,7 +33,10 @@ export function CTAButton({ href, children, style, className }: Props) {
     });
 
     el.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 600);
+    const removeRipple = () => ripple.remove();
+    ripple.addEventListener("animationend", removeRipple, { once: true });
+    ripple.addEventListener("animationcancel", removeRipple, { once: true });
+    setTimeout(removeRipple, 700);
   }
 
   return (

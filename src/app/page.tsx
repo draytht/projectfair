@@ -60,7 +60,27 @@ function FeedbackCard({ fb }: { fb: FeedbackItem }) {
   );
 }
 
-function FeedbackCarousel({ feedbacks, loaded }: { feedbacks: FeedbackItem[]; loaded: boolean }) {
+function FeedbackCarousel({
+  feedbacks,
+  loaded,
+  error,
+}: {
+  feedbacks: FeedbackItem[];
+  loaded: boolean;
+  error: boolean;
+}) {
+  if (loaded && error) {
+    return (
+      <section className="py-16">
+        <div className="max-w-5xl mx-auto px-6 md:px-10">
+          <p style={{ color: "var(--th-text-2)", fontSize: "0.8125rem" }}>
+            Unable to load feedback right now.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   if (loaded && feedbacks.length === 0) return null;
 
   // Triple the array so the CSS loop is seamless
@@ -114,6 +134,28 @@ function FeedbackCarousel({ feedbacks, loaded }: { feedbacks: FeedbackItem[]; lo
   );
 }
 
+// ── Shared IntersectionObserver for all Reveal instances ─────────────────────
+let _sharedObserver: IntersectionObserver | null = null;
+const _revealCallbacks = new Map<Element, () => void>();
+
+function getRevealObserver(): IntersectionObserver {
+  if (!_sharedObserver) {
+    _sharedObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            _revealCallbacks.get(entry.target)?.();
+            _sharedObserver!.unobserve(entry.target);
+            _revealCallbacks.delete(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+  }
+  return _sharedObserver;
+}
+
 // ── Scroll-triggered reveal ───────────────────────────────────────────────────
 function Reveal({
   children,
@@ -130,12 +172,13 @@ function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.1 }
-    );
+    const obs = getRevealObserver();
+    _revealCallbacks.set(el, () => setVisible(true));
     obs.observe(el);
-    return () => obs.disconnect();
+    return () => {
+      obs.unobserve(el);
+      _revealCallbacks.delete(el);
+    };
   }, []);
 
   return (
@@ -279,15 +322,6 @@ function ProblemCard({
           padding: "28px 24px",
           position: "relative",
           overflow: "hidden",
-          transition: "border-color 0.2s, transform 0.2s cubic-bezier(0.16,1,0.3,1)",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "color-mix(in srgb, var(--th-accent) 40%, var(--th-border))";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--th-border)";
-          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
         }}
       >
         {/* Subtle top accent line */}
@@ -467,14 +501,21 @@ export default function LandingPage() {
   const mobile = useIsMobile();
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [feedbacksLoaded, setFeedbacksLoaded] = useState(false);
+  const [feedbackError, setFeedbackError] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     fetch("/api/feedback")
-      .then((r) => r.json())
-      .then((data: FeedbackItem[]) => { setFeedbacks(Array.isArray(data) ? data : []); setFeedbacksLoaded(true); })
-      .catch(() => setFeedbacksLoaded(true));
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((data: FeedbackItem[]) => {
+        setFeedbacks(Array.isArray(data) ? data : []);
+        setFeedbacksLoaded(true);
+      })
+      .catch(() => {
+        setFeedbackError(true);
+        setFeedbacksLoaded(true);
+      });
   }, []);
 
   return (
@@ -597,7 +638,7 @@ export default function LandingPage() {
       <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
 
       {/* ── User Feedbacks ────────────────────────────────────────────────── */}
-      <FeedbackCarousel feedbacks={feedbacks} loaded={feedbacksLoaded} />
+      <FeedbackCarousel feedbacks={feedbacks} loaded={feedbacksLoaded} error={feedbackError} />
 
       <div style={{ borderTop: "1px solid var(--th-border)" }} className="max-w-5xl mx-auto" />
 
